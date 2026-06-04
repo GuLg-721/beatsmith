@@ -123,6 +123,11 @@ Neon glow shadows instead of traditional drop shadows:
 
 ## Components
 
+**UI Library**: Naive UI (Vue 3 native, dark theme built-in, TypeScript friendly)
+**Animation**: motion-v (Vue 3 animation library)
+**Icons**: Lucide Vue Next (consistent stroke style, 1.5px stroke)
+**Font**: Inter (English) + Noto Sans SC (Chinese), loaded via Google Fonts
+
 All interactive components have: default, hover, focus, active, disabled, loading states.
 
 ### Buttons

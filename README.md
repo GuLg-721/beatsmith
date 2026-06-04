@@ -47,11 +47,14 @@
 | TypeScript | 类型安全 |
 | Pinia | 状态管理 |
 | Vue Router | 路由 |
+| Naive UI | 组件库（暗色主题内置） |
+| motion-v | 动画效果 |
+| Lucide Vue Next | 图标库 |
 | Canvas 2D | 游戏渲染 |
 | Web Audio API | 音频分析与播放 |
 | Vite | 构建工具 |
-| motion-v | 动画效果 |
-| Vue 组件库 | 待定（参考 UI 项目后确定） |
+| ESLint + Prettier | 代码规范 |
+| Inter + Noto Sans SC | 字体（英文 + 中文） |
 
 ### 后端 (server/)
 | 技术 | 用途 |
@@ -151,14 +154,18 @@ CREATE TABLE scores (
 
 ## 🏗️ 页面/路由
 
-| 路由 | 页面 | 功能 |
-|------|------|------|
-| `/` | HomeView | 上传音频，浏览公开谱面 |
-| `/login` | LoginView | 登录 |
-| `/register` | RegisterView | 注册 |
-| `/editor` | EditorView | 时间轴编辑器 + 游戏场预览 |
-| `/play/:mapId` | PlayerView | MCosu 风格节奏游戏 |
-| `/map/:mapId` | MapDetailView | 谱面详情 + 排行榜 + 开始游戏 |
+| 路由 | 页面 | 功能 | 需登录 |
+|------|------|------|--------|
+| `/` | HomeView | 沉浸式首页 + 粒子背景 + CTA | 否 |
+| `/login` | LoginView | 登录/注册（浮动表单 + 动态背景） | 否 |
+| `/songs` | SongsView | 歌曲库（唱片店风格卡片墙） | 否 |
+| `/leaderboard` | LeaderboardView | 全局总分 + 单曲排行 | 否 |
+| `/editor` | EditorView | 时间轴编辑器 + 游戏场预览 | ✅ |
+| `/play/:mapId` | PlayerView | MCosu 风格节奏游戏 | ✅ |
+| `/map/:mapId` | MapDetailView | 谱面详情 + 排行榜 + 开始游戏 | 否 |
+| `/profile/:id` | ProfileView | 个人档案 + 评级分布 + 游玩记录 | ✅ |
+| `/settings` | SettingsView | 个人设置（修改昵称、密码） | ✅ |
+| `*` | NotFoundView | 404 页面 | 否 |
 
 ## 📁 项目结构
 
@@ -314,6 +321,21 @@ beatforge/
 - **视觉风格**：暗色霓虹 — 深色背景 + 紫/蓝/粉霓虹高亮
 - **动画**：motion-v（游戏特效 + 页面过渡 + 登录动效）
 - **组件库**：待定（参考 UI 开源项目后确定）
+
+## 📏 项目规范
+
+### 密码规则
+- 最少 8 位
+- 必须包含字母和数字
+
+### 上传限制
+- 音频文件最大 50MB
+- 支持格式：MP3, WAV
+- 封面图：可选上传，无封面时用 OKLCH 渐变色占位
+
+### 路由权限
+- 公开页面：首页、登录、歌曲库、排行榜、谱面详情、404
+- 需登录页面：编辑器、游戏、个人档案、设置
 
 ## 🔧 开发命令
 
