@@ -358,6 +358,7 @@ npm run build
 
 ## 📝 Git 提交规范
 
+### 提交消息格式
 - `init:` 项目初始化
 - `feat:` 新功能
 - `fix:` Bug 修复
@@ -365,5 +366,38 @@ npm run build
 - `refactor:` 代码重构
 - `docs:` 文档更新
 - `chore:` 构建/工具变更
+
+### ⚠️ 分支管理规则（重要）
+
+**每次大变更或影响功能的变化前，必须先创建分支保存当前版本：**
+
+1. **大变更前**：`git checkout -b feature/xxx` 创建功能分支
+2. **完成变更后**：合并回 main 并推送
+3. **每次完成一步**：提交到 git 并推送（和分支管理同等重要）
+
+**什么算"大变更"：**
+- 新增/重写一个页面的 UI
+- 修改数据库结构
+- 修改 API 接口
+- 修改路由结构
+- 修改核心引擎逻辑（AudioEngine, HitDetector 等）
+- 任何可能导致现有功能失效的改动
+
+**分支命名规范：**
+- `feature/xxx` — 新功能
+- `fix/xxx` — Bug 修复
+- `refactor/xxx` — 重构
+- `ui/xxx` — UI 变更
+
+**工作流程：**
+```
+1. git checkout main
+2. git checkout -b feature/home-page-particles    ← 创建分支
+3. 编写代码...
+4. git add -A && git commit -m "feat: add particle background"
+5. git checkout main && git merge feature/home-page-particles  ← 合并
+6. git push origin main                            ← 推送
+7. git branch -d feature/home-page-particles       ← 删除分支
+```
 
 每个阶段完成后 git commit 并 push 到 GitHub。
