@@ -262,10 +262,8 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   const endX = x + (x > canvasWidth / 2 ? -1 : 1) * trackLen * 0.08
   const endY = endYCalc
 
-  // 边界控制
-  const margin = 60
-  const clampedEndY = Math.min(Math.max(endY, margin), canvasHeight - margin)
-  const clampedEndX = Math.min(Math.max(endX, margin), canvasWidth - margin)
+  const clampedEndY = endY
+  const clampedEndX = endX
 
   let alpha = 1
   if (td > 1200) alpha = Math.max(0, 1 - (td - 1200) / 600)
