@@ -14,6 +14,8 @@ let isDragging = false
 let dragNoteId: string | null = null
 let dragStartX = 0
 let dragStartY = 0
+let dragIsResizing = false
+let dragOffsetTime: number | undefined
 let isPanning = false
 let panStartX = 0
 let panStartOffset = 0
@@ -228,6 +230,7 @@ function render() {
 
 /**
  * 查找点击位置的音符
+ * Hold 音符：点击整个范围都能选中
  */
 function findNoteAtPosition(canvasX: number, canvasY: number): Note | null {
   for (let i = editorStore.notes.length - 1; i >= 0; i--) {
@@ -235,11 +238,20 @@ function findNoteAtPosition(canvasX: number, canvasY: number): Note | null {
     const x = timeToX(note.time)
     const y = normToY(note.y)
 
+    // Hold 音符：检查是否在时间范围内
+    if (note.type === 'hold' && note.endTime) {
+      const endX = timeToX(note.endTime)
+      const inTimeRange = canvasX >= x - 10 && canvasX <= endX + 10
+      const inYRange = Math.abs(canvasY - y) < NOTE_RADIUS + 10
+      if (inTimeRange && inYRange) return note
+    }
+
+    // Circle/Tap 音符：检查距离
     const dx = canvasX - x
     const dy = canvasY - y
     const dist = Math.sqrt(dx * dx + dy * dy)
-
-    if (dist < NOTE_RADIUS + 5) return note
+    const hitRadius = note.type === 'tap' ? NOTE_RADIUS + 8 : NOTE_RADIUS + 5
+    if (dist < hitRadius) return note
   }
   return null
 }
@@ -273,6 +285,22 @@ function handleMouseDown(e: MouseEvent) {
     dragNoteId = note.id
     dragStartX = x
     dragStartY = y
+
+    // Hold 音符：检测是否点击了端点（用于拉伸）
+    if (note.type === 'hold' && note.endTime) {
+      const endX = timeToX(note.endTime)
+      const distToEnd = Math.abs(x - endX)
+      if (distToEnd < 15) {
+        dragIsResizing = true
+        dragOffsetTime = undefined
+      } else {
+        dragIsResizing = false
+        dragOffsetTime = note.endTime - note.time
+      }
+    } else {
+      dragIsResizing = false
+      dragOffsetTime = undefined
+    }
   } else {
     // 放置新音符
     editorStore.selectNote(null)
@@ -315,7 +343,16 @@ function handleMouseMove(e: MouseEvent) {
     const note = editorStore.notes.find(n => n.id === dragNoteId)
     if (note) {
       const newTime = snapTime(xToTime(x))
-      note.time = newTime
+      if (dragIsResizing && note.type === 'hold' && note.endTime) {
+        // 拉伸 Hold 端点
+        note.endTime = Math.max(note.time + 100, newTime)
+      } else {
+        note.time = newTime
+        // Hold 音符：同步移动 endTime
+        if (note.type === 'hold' && note.endTime && dragOffsetTime !== undefined) {
+          note.endTime = newTime + dragOffsetTime
+        }
+      }
     }
   }
 }
@@ -333,6 +370,8 @@ function handleMouseUp(e: MouseEvent) {
   }
   isDragging = false
   dragNoteId = null
+  dragIsResizing = false
+  dragOffsetTime = undefined
   isPanning = false
 }
 

@@ -42,6 +42,11 @@ function handleGenerate() {
     } : undefined
   )
 
+  // 调试：检查生成的音符类型
+  const typeCounts: Record<string, number> = {}
+  editorStore.notes.forEach(n => { typeCounts[n.type] = (typeCounts[n.type] || 0) + 1 })
+  console.log('Generated notes:', typeCounts)
+
   showGenerateModal.value = false
 }
 </script>
