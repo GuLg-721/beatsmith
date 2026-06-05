@@ -78,7 +78,7 @@ onMounted(() => {
     ctx!.fillRect(0, 0, width, height)
 
     // 绘制网格线（科技感）
-    ctx!.strokeStyle = 'rgba(100, 60, 180, 0.04)'
+    ctx!.strokeStyle = 'rgba(100, 60, 180, 0.06)'
     ctx!.lineWidth = 0.5
     const gridSize = 60
     const gridOffset = (time * 20) % gridSize

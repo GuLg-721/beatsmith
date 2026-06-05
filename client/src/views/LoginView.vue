@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import AuroraBackground from '@/components/common/AuroraBackground.vue'
@@ -17,7 +17,8 @@ const authStore = useAuthStore()
 
 const isLogin = ref(true)
 const errorMsg = ref('')
-const slideKey = ref(0)
+const cardAnimating = ref(false)
+const slideDirection = ref<'left' | 'right'>('left')
 
 const form = reactive({
   username: '',
@@ -74,13 +75,21 @@ async function handleSubmit() {
 }
 
 function toggleMode() {
-  isLogin.value = !isLogin.value
-  slideKey.value++
-  errorMsg.value = ''
-  form.username = ''
-  form.nickname = ''
-  form.password = ''
-  form.confirmPassword = ''
+  if (cardAnimating.value) return
+  slideDirection.value = isLogin.value ? 'left' : 'right'
+  cardAnimating.value = true
+
+  setTimeout(() => {
+    isLogin.value = !isLogin.value
+    errorMsg.value = ''
+    form.username = ''
+    form.nickname = ''
+    form.password = ''
+    form.confirmPassword = ''
+    nextTick(() => {
+      cardAnimating.value = false
+    })
+  }, 200)
 }
 </script>
 
@@ -89,7 +98,6 @@ function toggleMode() {
     <AuroraBackground />
 
     <div class="login-container">
-      <div class="card-glow" />
       <div class="login-card">
         <!-- Logo -->
         <div class="logo">
@@ -99,41 +107,48 @@ function toggleMode() {
 
         <NAlert v-if="errorMsg" type="error" :title="errorMsg" closable @close="errorMsg = ''" class="error-alert" />
 
-        <Transition :name="isLogin ? 'slide-left' : 'slide-right'" mode="out-in">
-          <div :key="slideKey">
-            <!-- Login Form -->
-            <NForm v-if="isLogin" ref="formRef" :model="form" :rules="rules" @submit.prevent="handleSubmit" :show-label="true">
-              <NFormItem path="username" label="用户名">
-                <NInput v-model:value="form.username" placeholder="输入用户名" :disabled="authStore.loading" />
-              </NFormItem>
-              <NFormItem path="password" label="密码">
-                <NInput v-model:value="form.password" type="password" show-password-on="click" placeholder="输入密码" :disabled="authStore.loading" />
-              </NFormItem>
-              <NButton type="primary" block strong :loading="authStore.loading" :disabled="authStore.loading" class="submit-btn" @click="handleSubmit">
-                登录
-              </NButton>
-            </NForm>
+        <!-- Form with CSS animation -->
+        <div
+          class="form-wrapper"
+          :class="{
+            'slide-out-left': cardAnimating && slideDirection === 'left',
+            'slide-out-right': cardAnimating && slideDirection === 'right',
+            'slide-in-left': !cardAnimating && slideDirection === 'right',
+            'slide-in-right': !cardAnimating && slideDirection === 'left',
+          }"
+        >
+          <!-- Login Form -->
+          <NForm v-if="isLogin" ref="formRef" :model="form" :rules="rules" @submit.prevent="handleSubmit">
+            <NFormItem path="username" label="用户名">
+              <NInput v-model:value="form.username" placeholder="输入用户名" :disabled="authStore.loading" />
+            </NFormItem>
+            <NFormItem path="password" label="密码">
+              <NInput v-model:value="form.password" type="password" show-password-on="click" placeholder="输入密码" :disabled="authStore.loading" />
+            </NFormItem>
+            <NButton type="primary" block strong :loading="authStore.loading" :disabled="authStore.loading" class="submit-btn" @click="handleSubmit">
+              登录
+            </NButton>
+          </NForm>
 
-            <!-- Register Form -->
-            <NForm v-else ref="formRef" :model="form" :rules="rules" @submit.prevent="handleSubmit" :show-label="true">
-              <NFormItem path="username" label="用户名">
-                <NInput v-model:value="form.username" placeholder="3-20 位，字母数字下划线" :disabled="authStore.loading" />
-              </NFormItem>
-              <NFormItem path="nickname" label="昵称（可选）">
-                <NInput v-model:value="form.nickname" placeholder="显示名称" :disabled="authStore.loading" />
-              </NFormItem>
-              <NFormItem path="password" label="密码">
-                <NInput v-model:value="form.password" type="password" show-password-on="click" placeholder="至少 8 位，字母+数字" :disabled="authStore.loading" />
-              </NFormItem>
-              <NFormItem path="confirmPassword" label="确认密码">
-                <NInput v-model:value="form.confirmPassword" type="password" show-password-on="click" placeholder="再次输入密码" :disabled="authStore.loading" />
-              </NFormItem>
-              <NButton type="primary" block strong :loading="authStore.loading" :disabled="authStore.loading" class="submit-btn" @click="handleSubmit">
-                注册
-              </NButton>
-            </NForm>
-          </div>
-        </Transition>
+          <!-- Register Form -->
+          <NForm v-else ref="formRef" :model="form" :rules="rules" @submit.prevent="handleSubmit">
+            <NFormItem path="username" label="用户名">
+              <NInput v-model:value="form.username" placeholder="3-20 位，字母数字下划线" :disabled="authStore.loading" />
+            </NFormItem>
+            <NFormItem path="nickname" label="昵称（可选）">
+              <NInput v-model:value="form.nickname" placeholder="显示名称" :disabled="authStore.loading" />
+            </NFormItem>
+            <NFormItem path="password" label="密码">
+              <NInput v-model:value="form.password" type="password" show-password-on="click" placeholder="至少 8 位，字母+数字" :disabled="authStore.loading" />
+            </NFormItem>
+            <NFormItem path="confirmPassword" label="确认密码">
+              <NInput v-model:value="form.confirmPassword" type="password" show-password-on="click" placeholder="再次输入密码" :disabled="authStore.loading" />
+            </NFormItem>
+            <NButton type="primary" block strong :loading="authStore.loading" :disabled="authStore.loading" class="submit-btn" @click="handleSubmit">
+              注册
+            </NButton>
+          </NForm>
+        </div>
 
         <div class="toggle">
           <span class="toggle-text">{{ isLogin ? '没有账号？' : '已有账号？' }}</span>
@@ -143,7 +158,7 @@ function toggleMode() {
         </div>
       </div>
 
-      <router-link to="/" class="back-link">← 返回首页</router-link>
+      <a href="/" class="back-link">← 返回首页</a>
     </div>
   </div>
 </template>
@@ -166,48 +181,26 @@ function toggleMode() {
   gap: 1.5rem;
 }
 
-/* 外层旋转发光 */
-.card-glow {
-  position: absolute;
-  width: 420px;
-  max-width: calc(90vw + 8px);
-  height: calc(100% + 8px);
-  top: -4px;
-  border-radius: 18px;
-  background: conic-gradient(
-    from 0deg,
-    oklch(0.62 0.22 350 / 0.6),
-    oklch(0.78 0.15 195 / 0.6),
-    oklch(0.55 0.18 280 / 0.6),
-    oklch(0.62 0.22 350 / 0.6)
-  );
-  filter: blur(16px);
-  opacity: 0.4;
-  animation: glowSpin 4s linear infinite;
-  z-index: 0;
-}
-
-@keyframes glowSpin {
-  to { transform: rotate(360deg); }
-}
-
 .login-card {
   position: relative;
   width: 420px;
   max-width: 90vw;
-  background: oklch(0.10 0.008 280 / 0.92);
+  background: oklch(0.14 0.01 280 / 0.92);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid oklch(0.62 0.22 350 / 0.25);
+  border: 2px solid oklch(0.62 0.22 350 / 0.3);
   border-radius: 16px;
   padding: 2.5rem;
   z-index: 1;
-  transition: border-color 0.3s, box-shadow 0.3s;
+  transition: border-color 0.4s, box-shadow 0.4s;
 }
 
 .login-card:hover {
-  border-color: oklch(0.62 0.22 350 / 0.45);
-  box-shadow: 0 0 30px oklch(0.62 0.22 350 / 0.15);
+  border-color: oklch(0.62 0.22 350 / 0.5);
+  box-shadow:
+    0 0 20px oklch(0.62 0.22 350 / 0.12),
+    0 0 40px oklch(0.62 0.22 350 / 0.06),
+    inset 0 1px 0 oklch(1 0 0 / 0.05);
 }
 
 .logo {
@@ -229,6 +222,31 @@ function toggleMode() {
 
 .error-alert { margin-bottom: 1.5rem; }
 
+/* 表单切换动画 */
+.form-wrapper {
+  transition: opacity 0.2s, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.form-wrapper.slide-out-left {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+.form-wrapper.slide-out-right {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.form-wrapper.slide-in-left {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.form-wrapper.slide-in-right {
+  opacity: 1;
+  transform: translateX(0);
+}
+
 :deep(.n-form-item-label__text) {
   color: var(--muted) !important;
   font-size: 0.8125rem !important;
@@ -238,7 +256,7 @@ function toggleMode() {
   --n-border: 1px solid oklch(0.22 0.005 280) !important;
   --n-border-hover: 1px solid oklch(0.62 0.22 350 / 0.4) !important;
   --n-border-focus: 1px solid var(--primary) !important;
-  --n-color: oklch(0.08 0.005 280) !important;
+  --n-color: oklch(0.10 0.005 280) !important;
   --n-text-color: var(--ink) !important;
   --n-placeholder-color: oklch(0.40 0.005 280) !important;
   border-radius: 8px !important;
@@ -301,52 +319,23 @@ function toggleMode() {
 }
 
 .back-link {
-  color: oklch(0.45 0.005 280);
+  color: oklch(0.50 0.005 280);
   font-size: 0.875rem;
   text-decoration: none;
-  transition: color 0.2s;
+  transition: color 0.2s, text-shadow 0.2s;
 }
 
-.back-link:hover { color: var(--ink); }
-
-/* 滑动切换动画 */
-.slide-left-enter-active,
-.slide-left-leave-active,
-.slide-right-enter-active,
-.slide-right-leave-active {
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.slide-left-enter-from {
-  opacity: 0;
-  transform: translateX(40px);
-}
-.slide-left-leave-to {
-  opacity: 0;
-  transform: translateX(-40px);
-}
-
-.slide-right-enter-from {
-  opacity: 0;
-  transform: translateX(-40px);
-}
-.slide-right-leave-to {
-  opacity: 0;
-  transform: translateX(40px);
+.back-link:hover {
+  color: var(--ink);
+  text-shadow: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .card-glow { animation: none; }
-  .slide-left-enter-active,
-  .slide-left-leave-active,
-  .slide-right-enter-active,
-  .slide-right-leave-active {
+  .form-wrapper {
     transition: opacity 0.2s;
   }
-  .slide-left-enter-from,
-  .slide-left-leave-to,
-  .slide-right-enter-from,
-  .slide-right-leave-to {
+  .form-wrapper.slide-out-left,
+  .form-wrapper.slide-out-right {
     transform: none;
   }
 }
