@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, nextTick } from 'vue'
+import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import AuroraBackground from '@/components/common/AuroraBackground.vue'
@@ -17,8 +17,7 @@ const authStore = useAuthStore()
 
 const isLogin = ref(true)
 const errorMsg = ref('')
-const cardAnimating = ref(false)
-const slideDirection = ref<'left' | 'right'>('left')
+const showForm = ref(true)
 
 const form = reactive({
   username: '',
@@ -75,10 +74,8 @@ async function handleSubmit() {
 }
 
 function toggleMode() {
-  if (cardAnimating.value) return
-  slideDirection.value = isLogin.value ? 'left' : 'right'
-  cardAnimating.value = true
-
+  // 先淡出
+  showForm.value = false
   setTimeout(() => {
     isLogin.value = !isLogin.value
     errorMsg.value = ''
@@ -86,10 +83,9 @@ function toggleMode() {
     form.nickname = ''
     form.password = ''
     form.confirmPassword = ''
-    nextTick(() => {
-      cardAnimating.value = false
-    })
-  }, 200)
+    // 再淡入
+    showForm.value = true
+  }, 150)
 }
 </script>
 
@@ -99,7 +95,6 @@ function toggleMode() {
 
     <div class="login-container">
       <div class="login-card">
-        <!-- Logo -->
         <div class="logo">
           <span class="logo-icon">⚒️</span>
           <span class="logo-text">BeatSmith</span>
@@ -107,17 +102,7 @@ function toggleMode() {
 
         <NAlert v-if="errorMsg" type="error" :title="errorMsg" closable @close="errorMsg = ''" class="error-alert" />
 
-        <!-- Form with CSS animation -->
-        <div
-          class="form-wrapper"
-          :class="{
-            'slide-out-left': cardAnimating && slideDirection === 'left',
-            'slide-out-right': cardAnimating && slideDirection === 'right',
-            'slide-in-left': !cardAnimating && slideDirection === 'right',
-            'slide-in-right': !cardAnimating && slideDirection === 'left',
-          }"
-        >
-          <!-- Login Form -->
+        <div class="form-area" :class="{ 'form-hidden': !showForm }">
           <NForm v-if="isLogin" ref="formRef" :model="form" :rules="rules" @submit.prevent="handleSubmit">
             <NFormItem path="username" label="用户名">
               <NInput v-model:value="form.username" placeholder="输入用户名" :disabled="authStore.loading" />
@@ -130,7 +115,6 @@ function toggleMode() {
             </NButton>
           </NForm>
 
-          <!-- Register Form -->
           <NForm v-else ref="formRef" :model="form" :rules="rules" @submit.prevent="handleSubmit">
             <NFormItem path="username" label="用户名">
               <NInput v-model:value="form.username" placeholder="3-20 位，字母数字下划线" :disabled="authStore.loading" />
@@ -192,15 +176,12 @@ function toggleMode() {
   border-radius: 16px;
   padding: 2.5rem;
   z-index: 1;
-  transition: border-color 0.4s, box-shadow 0.4s;
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 .login-card:hover {
   border-color: oklch(0.62 0.22 350 / 0.5);
-  box-shadow:
-    0 0 20px oklch(0.62 0.22 350 / 0.12),
-    0 0 40px oklch(0.62 0.22 350 / 0.06),
-    inset 0 1px 0 oklch(1 0 0 / 0.05);
+  box-shadow: 0 0 25px oklch(0.62 0.22 350 / 0.12);
 }
 
 .logo {
@@ -222,29 +203,14 @@ function toggleMode() {
 
 .error-alert { margin-bottom: 1.5rem; }
 
-/* 表单切换动画 */
-.form-wrapper {
-  transition: opacity 0.2s, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.form-wrapper.slide-out-left {
-  opacity: 0;
-  transform: translateX(-30px);
-}
-
-.form-wrapper.slide-out-right {
-  opacity: 0;
-  transform: translateX(30px);
-}
-
-.form-wrapper.slide-in-left {
+/* 表单淡入淡出 */
+.form-area {
   opacity: 1;
-  transform: translateX(0);
+  transition: opacity 0.15s;
 }
 
-.form-wrapper.slide-in-right {
-  opacity: 1;
-  transform: translateX(0);
+.form-area.form-hidden {
+  opacity: 0;
 }
 
 :deep(.n-form-item-label__text) {
@@ -260,11 +226,11 @@ function toggleMode() {
   --n-text-color: var(--ink) !important;
   --n-placeholder-color: oklch(0.40 0.005 280) !important;
   border-radius: 8px !important;
-  transition: all 0.3s ease-out !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
 }
 
 :deep(.n-input:focus-within) {
-  box-shadow: 0 0 0 3px oklch(0.62 0.22 350 / 0.1), 0 0 20px oklch(0.62 0.22 350 / 0.12) !important;
+  box-shadow: 0 0 0 3px oklch(0.62 0.22 350 / 0.1), 0 0 15px oklch(0.62 0.22 350 / 0.1) !important;
 }
 
 :deep(.n-button--primary-type) {
@@ -278,16 +244,11 @@ function toggleMode() {
   font-size: 1rem !important;
   font-weight: 600 !important;
   border-radius: 8px !important;
-  transition: all 0.3s ease-out !important;
+  transition: box-shadow 0.2s !important;
 }
 
 :deep(.n-button--primary-type:hover) {
-  box-shadow: 0 0 25px oklch(0.62 0.22 350 / 0.35) !important;
-  transform: translateY(-1px);
-}
-
-:deep(.n-button--primary-type:active) {
-  transform: translateY(0);
+  box-shadow: 0 0 20px oklch(0.62 0.22 350 / 0.3) !important;
 }
 
 .toggle {
@@ -310,33 +271,25 @@ function toggleMode() {
   font-size: 0.875rem;
   font-family: inherit;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color 0.2s;
 }
 
 .toggle-btn:hover {
   color: var(--accent-hover);
-  text-shadow: 0 0 12px oklch(0.78 0.15 195 / 0.5);
 }
 
 .back-link {
   color: oklch(0.50 0.005 280);
   font-size: 0.875rem;
   text-decoration: none;
-  transition: color 0.2s, text-shadow 0.2s;
+  transition: color 0.2s;
 }
 
 .back-link:hover {
   color: var(--ink);
-  text-shadow: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .form-wrapper {
-    transition: opacity 0.2s;
-  }
-  .form-wrapper.slide-out-left,
-  .form-wrapper.slide-out-right {
-    transform: none;
-  }
+  .form-area { transition: none; }
 }
 </style>
