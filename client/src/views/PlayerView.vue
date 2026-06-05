@@ -47,9 +47,9 @@ onMounted(async () => {
   }
 })
 
-function startGame() {
+async function startGame() {
   gameStore.startGame()
-  audioStore.play()
+  await audioStore.play()
 }
 
 function togglePause() {

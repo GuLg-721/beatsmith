@@ -69,8 +69,8 @@ export const useAudioStore = defineStore('audio', () => {
   /**
    * 播放
    */
-  function play() {
-    engine.play(() => {
+  async function play() {
+    await engine.play(() => {
       isPlaying.value = false
       stopUpdateLoop()
     })

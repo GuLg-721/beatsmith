@@ -69,8 +69,13 @@ export class AudioEngine {
   /**
    * 播放
    */
-  play(onEnd?: () => void) {
+  async play(onEnd?: () => void) {
     if (!this.context || !this.buffer || this._isPlaying) return
+
+    // 确保 AudioContext 已恢复（Chrome 自动播放策略）
+    if (this.context.state === 'suspended') {
+      await this.context.resume()
+    }
 
     this.sourceNode = this.context.createBufferSource()
     this.sourceNode.buffer = this.buffer
