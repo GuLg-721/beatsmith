@@ -5,6 +5,7 @@ import { initDB } from './db'
 import authRoutes from './routes/auth'
 import uploadRoutes from './routes/upload'
 import mapsRoutes from './routes/maps'
+import scoresRoutes from './routes/scores'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -25,6 +26,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRoutes)
 app.use('/api/upload', uploadRoutes)
 app.use('/api/maps', mapsRoutes)
+app.use('/api/maps', scoresRoutes)
 
 // 启动服务器
 async function start() {
