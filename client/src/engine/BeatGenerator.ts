@@ -58,30 +58,29 @@ function randomPosition(existingNotes: Note[], canvasHeight: number): { x: numbe
  */
 function generateSimple(beats: Beat[]): Note[] {
   const notes: Note[] = []
-  let tapCluster = 0
+  let tapCount = 0
 
-  beats.forEach((beat, i) => {
+  for (let i = 0; i < beats.length; i++) {
+    const beat = beats[i]
     const pos = randomPosition(notes, 1)
+    let type: 'circle' | 'tap'
 
-    let type: 'circle' | 'tap' = 'tap'
-    if (tapCluster > 0 && tapCluster < 6 && Math.random() < 0.7) {
-      tapCluster++
-    } else if (tapCluster >= 6 || Math.random() < 0.3) {
+    const r = Math.random()
+    if (tapCount >= 5) {
       type = 'circle'
-      tapCluster = 0
+      tapCount = 0
+    } else if (r < 0.75) {
+      type = 'tap'
+      tapCount++
     } else {
-      tapCluster++
+      type = 'circle'
+      tapCount = 0
     }
 
-    notes.push({
-      id: nanoid(8),
-      type,
-      time: beat.time,
-      x: pos.x,
-      y: pos.y
-    })
-  })
+    notes.push({ id: nanoid(8), type, time: beat.time, x: pos.x, y: pos.y })
+  }
 
+  console.log('generateSimple: total=', notes.length, 'circle=', notes.filter(n => n.type === 'circle').length, 'tap=', notes.filter(n => n.type === 'tap').length)
   return notes
 }
 
@@ -186,6 +185,7 @@ function generateCustom(beats: Beat[], options: CustomOptions): Note[] {
     notes.push(note)
   }
 
+  console.log('generateCustom: total=', notes.length, 'circle=', notes.filter(n => n.type === 'circle').length, 'tap=', notes.filter(n => n.type === 'tap').length, 'hold=', notes.filter(n => n.type === 'hold').length)
   return notes
 }
 
