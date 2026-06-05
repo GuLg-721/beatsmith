@@ -12,500 +12,240 @@ let animFrameId: number | null = null
 let canvasWidth = 0
 let canvasHeight = 0
 
-// 封面图片
-const coverImage = ref<HTMLImageElement | null>(null)
-const coverLoaded = ref(false)
-
-const NOTE_RADIUS = 24
+const NOTE_RADIUS = 22
 const HIT_RADIUS = 50
 
 // 点击音效
 let clickAudioCtx: AudioContext | null = null
-
 function playClickSound(type: string) {
-  if (!clickAudioCtx) {
-    clickAudioCtx = new AudioContext()
-  }
+  if (!clickAudioCtx) clickAudioCtx = new AudioContext()
   const ctx = clickAudioCtx
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
-  osc.connect(gain)
-  gain.connect(ctx.destination)
-
-  switch (type) {
-    case 'perfect':
-      osc.frequency.setValueAtTime(880, ctx.currentTime)
-      osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.05)
-      gain.gain.setValueAtTime(0.3, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1)
-      osc.type = 'sine'
-      break
-    case 'great':
-      osc.frequency.setValueAtTime(660, ctx.currentTime)
-      gain.gain.setValueAtTime(0.25, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08)
-      osc.type = 'sine'
-      break
-    case 'good':
-      osc.frequency.setValueAtTime(440, ctx.currentTime)
-      gain.gain.setValueAtTime(0.2, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06)
-      osc.type = 'triangle'
-      break
-    case 'miss':
-      osc.frequency.setValueAtTime(200, ctx.currentTime)
-      osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.15)
-      gain.gain.setValueAtTime(0.15, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15)
-      osc.type = 'sawtooth'
-      break
-    case 'click':
-      osc.frequency.setValueAtTime(1200, ctx.currentTime)
-      gain.gain.setValueAtTime(0.1, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03)
-      osc.type = 'sine'
-      break
+  osc.connect(gain); gain.connect(ctx.destination)
+  const sounds: Record<string, { freq: number; end?: number; wave: OscillatorType; dur: number; vol: number }> = {
+    perfect: { freq: 880, end: 1760, wave: 'sine', dur: 0.1, vol: 0.3 },
+    great: { freq: 660, wave: 'sine', dur: 0.08, vol: 0.25 },
+    good: { freq: 440, wave: 'triangle', dur: 0.06, vol: 0.2 },
+    miss: { freq: 200, end: 100, wave: 'sawtooth', dur: 0.15, vol: 0.15 },
+    click: { freq: 1200, wave: 'sine', dur: 0.03, vol: 0.1 },
+    hold: { freq: 520, wave: 'sine', dur: 0.04, vol: 0.15 },
   }
-
-  osc.start(ctx.currentTime)
-  osc.stop(ctx.currentTime + 0.2)
+  const s = sounds[type] || sounds.click
+  osc.type = s.wave
+  osc.frequency.setValueAtTime(s.freq, ctx.currentTime)
+  if (s.end) osc.frequency.exponentialRampToValueAtTime(s.end, ctx.currentTime + s.dur)
+  gain.gain.setValueAtTime(s.vol, ctx.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + s.dur)
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + s.dur + 0.05)
 }
 
 // 点击波纹
-interface ClickRipple {
-  x: number; y: number; life: number; color: string
-}
+interface ClickRipple { x: number; y: number; life: number; color: string }
 let clickRipples: ClickRipple[] = []
-
 function addClickRipple(x: number, y: number, color: string) {
   clickRipples.push({ x, y, life: 1, color })
 }
 
-const COLORS = {
-  circle: '#ff6496',
-  circleGlow: 'rgba(255, 100, 150, 0.5)',
-  circleInner: '#ffb3cc',
-
-  hold: '#64c8ff',
-  holdGlow: 'rgba(100, 200, 255, 0.4)',
-  holdBar: 'rgba(100, 200, 255, 0.3)',
-
-  slide: '#96ff96',
-  slideGlow: 'rgba(150, 255, 150, 0.4)',
-  slidePath: 'rgba(150, 255, 150, 0.7)',
-
-  approach: 'rgba(255, 255, 255, 0.9)',
-  approachRing: 'rgba(255, 255, 255, 0.4)',
-
-  warning: 'rgba(255, 80, 80, 0.6)',
-
-  judgment: {
-    perfect: '#ffd700',
-    great: '#4a9eff',
-    good: '#4caf50',
-    miss: '#ff5252'
-  }
-}
-
 // 粒子
-interface Particle {
-  x: number; y: number; vx: number; vy: number
-  life: number; maxLife: number; color: string; size: number
-}
+interface Particle { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string; size: number }
 let particles: Particle[] = []
-
 function spawnHitParticles(x: number, y: number, color: string, count = 14) {
   for (let i = 0; i < count; i++) {
     const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3
     const speed = 3 + Math.random() * 5
-    particles.push({
-      x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-      life: 1, maxLife: 0.3 + Math.random() * 0.4, color,
-      size: 2 + Math.random() * 4
-    })
+    particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1, maxLife: 0.3 + Math.random() * 0.4, color, size: 2 + Math.random() * 4 })
   }
 }
 
 // 判定文字
-interface JudgmentText {
-  text: string; color: string; x: number; y: number; life: number; scale: number
-}
+interface JudgmentText { text: string; color: string; x: number; y: number; life: number; scale: number }
 let judgmentTexts: JudgmentText[] = []
-
 function addJudgmentText(type: string, x: number, y: number) {
-  judgmentTexts.push({
-    text: type.toUpperCase(),
-    color: COLORS.judgment[type as keyof typeof COLORS.judgment] || '#fff',
-    x, y, life: 1, scale: 1.8
-  })
+  judgmentTexts.push({ text: type.toUpperCase(), color: { perfect: '#ffd700', great: '#4a9eff', good: '#4caf50', miss: '#ff5252' }[type] || '#fff', x, y, life: 1, scale: 1.8 })
 }
 
-// 连击数字提示
-interface ComboNumber {
-  num: number; x: number; y: number; life: number
-}
-let comboNumbers: ComboNumber[] = []
-
-function addComboNumber(num: number, x: number, y: number) {
-  comboNumbers.push({ num, x, y, life: 1 })
-}
-
-/**
- * 设置封面图片
- */
+// 封面
+const coverImage = ref<HTMLImageElement | null>(null)
+const coverLoaded = ref(false)
 function loadCover(url: string) {
   const img = new Image()
   img.onload = () => { coverImage.value = img; coverLoaded.value = true }
   img.src = url
 }
 
+// 当前激活的 Hold/Slide 状态
+const activeFollow = ref<{ noteId: string; progress: number } | null>(null)
+
+const COLORS = {
+  circle: '#ff6496', circleGlow: 'rgba(255, 100, 150, 0.5)', circleInner: '#ffb3cc',
+  hold: '#64c8ff', holdTrack: 'rgba(100, 200, 255, 0.35)', holdBall: '#80d4ff',
+  slide: '#96ff96', slideTrack: 'rgba(150, 255, 150, 0.35)', slideBall: '#b0ffb0',
+  approach: 'rgba(255, 255, 255, 0.9)', approachRing: 'rgba(255, 255, 255, 0.4)',
+  warning: 'rgba(255, 80, 80, 0.6)',
+}
+
 /**
  * 绘制背景
  */
 function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  // 基础渐变
   const grad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.7)
-  grad.addColorStop(0, '#0d0520')
-  grad.addColorStop(0.5, '#0a0a18')
-  grad.addColorStop(1, '#060610')
-  ctx.fillStyle = grad
-  ctx.fillRect(0, 0, w, h)
+  grad.addColorStop(0, '#0d0520'); grad.addColorStop(0.5, '#0a0a18'); grad.addColorStop(1, '#060610')
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h)
 
-  // 封面背景（清晰但暗化）
   if (coverLoaded.value && coverImage.value) {
-    ctx.save()
-    ctx.globalAlpha = 0.45
-    ctx.filter = 'blur(5px) saturate(1.2) brightness(0.85)'
-
-    // 居中裁剪填充
+    ctx.save(); ctx.globalAlpha = 0.45; ctx.filter = 'blur(5px) saturate(1.2) brightness(0.85)'
     const imgAspect = coverImage.value.width / coverImage.value.height
     const canvasAspect = w / h
     let sw: number, sh: number, sx: number, sy: number
-
-    if (imgAspect > canvasAspect) {
-      sh = coverImage.value.height
-      sw = sh * canvasAspect
-      sx = (coverImage.value.width - sw) / 2
-      sy = 0
-    } else {
-      sw = coverImage.value.width
-      sh = sw / canvasAspect
-      sx = 0
-      sy = (coverImage.value.height - sh) / 2
-    }
-
+    if (imgAspect > canvasAspect) { sh = coverImage.value.height; sw = sh * canvasAspect; sx = (coverImage.value.width - sw) / 2; sy = 0 }
+    else { sw = coverImage.value.width; sh = sw / canvasAspect; sx = 0; sy = (coverImage.value.height - sh) / 2 }
     ctx.drawImage(coverImage.value, sx, sy, sw, sh, 0, 0, w, h)
     ctx.restore()
   }
 
-  // 音频响应脉冲
   const freq = audioStore.frequencyData
   if (freq.length > 0) {
     const bass = freq.slice(0, 5).reduce((a, b) => a + b, 0) / (5 * 255)
     if (bass > 0.15) {
       const pulseGrad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.5)
-      pulseGrad.addColorStop(0, `rgba(255, 100, 150, ${bass * 0.08})`)
-      pulseGrad.addColorStop(1, 'transparent')
-      ctx.fillStyle = pulseGrad
-      ctx.fillRect(0, 0, w, h)
+      pulseGrad.addColorStop(0, `rgba(255, 100, 150, ${bass * 0.08})`); pulseGrad.addColorStop(1, 'transparent')
+      ctx.fillStyle = pulseGrad; ctx.fillRect(0, 0, w, h)
     }
   }
 
-  // 网格线
-  ctx.strokeStyle = 'rgba(100, 60, 180, 0.05)'
-  ctx.lineWidth = 0.5
-  const gridSize = 80
-  for (let x = 0; x < w; x += gridSize) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke()
-  }
-  for (let y = 0; y < h; y += gridSize) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke()
-  }
+  ctx.strokeStyle = 'rgba(100, 60, 180, 0.05)'; ctx.lineWidth = 0.5
+  for (let x = 0; x < w; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke() }
+  for (let y = 0; y < h; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke() }
 }
 
 /**
- * 绘制 Circle 音符
+ * 绘制 Circle 音符（红色，单击）
  */
 function drawCircle(ctx: CanvasRenderingContext2D, note: Note, currentTime: number) {
-  const x = note.x * canvasWidth
-  const y = note.y * canvasHeight
+  const x = note.x * canvasWidth, y = note.y * canvasHeight
   const timeUntilHit = note.time - currentTime
-
   if (timeUntilHit < -400) return
 
-  // 淡入淡出
   let alpha = 1
   if (timeUntilHit > 1000) alpha = Math.max(0, 1 - (timeUntilHit - 1000) / 500)
   if (timeUntilHit < -150) alpha = Math.max(0, 1 + (timeUntilHit + 150) / 250)
   ctx.globalAlpha = alpha
 
-  // 即将消失警告（更明显的脉冲红色光圈）
+  // 警告
   if (timeUntilHit < -50 && timeUntilHit > -400 && !gameStore.processedNotes?.has(note.id)) {
-    const warnPulse = Math.sin(Date.now() * 0.015) * 0.5 + 0.5
-    const warnRadius = NOTE_RADIUS + 20 + warnPulse * 15
-
-    // 外层大光圈
-    ctx.fillStyle = `rgba(255, 50, 50, ${0.15 * warnPulse})`
-    ctx.beginPath()
-    ctx.arc(x, y, warnRadius + 20, 0, Math.PI * 2)
-    ctx.fill()
-
-    // 中层光圈
-    ctx.strokeStyle = `rgba(255, 80, 80, ${0.6 + warnPulse * 0.4})`
-    ctx.lineWidth = 3
-    ctx.beginPath()
-    ctx.arc(x, y, warnRadius, 0, Math.PI * 2)
-    ctx.stroke()
-
-    // 内层光圈
-    ctx.strokeStyle = `rgba(255, 120, 120, ${0.4 + warnPulse * 0.3})`
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.arc(x, y, NOTE_RADIUS + 8, 0, Math.PI * 2)
-    ctx.stroke()
+    const wp = Math.sin(Date.now() * 0.015) * 0.5 + 0.5
+    ctx.fillStyle = `rgba(255, 50, 50, ${0.12 * wp})`; ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS + 35, 0, Math.PI * 2); ctx.fill()
+    ctx.strokeStyle = `rgba(255, 80, 80, ${0.5 + wp * 0.5})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS + 20 + wp * 10, 0, Math.PI * 2); ctx.stroke()
   }
 
-  // 外层发光
-  const glowPulse = Math.sin(Date.now() * 0.004) * 0.15 + 0.85
-  ctx.fillStyle = `rgba(255, 100, 150, ${0.3 * glowPulse})`
-  ctx.beginPath()
-  ctx.arc(x, y, NOTE_RADIUS + 12, 0, Math.PI * 2)
-  ctx.fill()
+  // 发光
+  const gp = Math.sin(Date.now() * 0.004) * 0.15 + 0.85
+  ctx.fillStyle = `rgba(255, 100, 150, ${0.3 * gp})`; ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS + 12, 0, Math.PI * 2); ctx.fill()
 
-  // Approach circle
-  const approachDuration = 1200
-  if (timeUntilHit > 0 && timeUntilHit < approachDuration) {
-    const progress = 1 - (timeUntilHit / approachDuration)
-    const scale = 3.5 - 2.5 * progress
-
-    ctx.strokeStyle = COLORS.approachRing
-    ctx.lineWidth = 1.5
-    ctx.beginPath()
-    ctx.arc(x, y, NOTE_RADIUS * scale, 0, Math.PI * 2)
-    ctx.stroke()
-
-    ctx.strokeStyle = COLORS.approach
-    ctx.lineWidth = 2.5
-    ctx.beginPath()
-    ctx.arc(x, y, NOTE_RADIUS * scale, 0, Math.PI * 2)
-    ctx.stroke()
+  // 判定圈
+  const ad = 1200
+  if (timeUntilHit > 0 && timeUntilHit < ad) {
+    const p = 1 - (timeUntilHit / ad), scale = 3.5 - 2.5 * p
+    ctx.strokeStyle = COLORS.approachRing; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS * scale, 0, Math.PI * 2); ctx.stroke()
+    ctx.strokeStyle = COLORS.approach; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS * scale, 0, Math.PI * 2); ctx.stroke()
   }
 
-  // 音符本体
-  const noteGrad = ctx.createRadialGradient(x - 5, y - 5, 0, x, y, NOTE_RADIUS)
-  noteGrad.addColorStop(0, '#ffb3cc')
-  noteGrad.addColorStop(0.7, COLORS.circle)
-  noteGrad.addColorStop(1, '#cc3060')
-  ctx.fillStyle = noteGrad
-  ctx.beginPath()
-  ctx.arc(x, y, NOTE_RADIUS, 0, Math.PI * 2)
-  ctx.fill()
-
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
-  ctx.lineWidth = 2
-  ctx.stroke()
+  // 音符
+  const ng = ctx.createRadialGradient(x - 5, y - 5, 0, x, y, NOTE_RADIUS)
+  ng.addColorStop(0, '#ffb3cc'); ng.addColorStop(0.7, COLORS.circle); ng.addColorStop(1, '#cc3060')
+  ctx.fillStyle = ng; ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS, 0, Math.PI * 2); ctx.fill()
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.stroke()
 
   ctx.globalAlpha = 1
 }
 
 /**
- * 绘制 Hold 音符（蓝色，长按）
+ * 绘制 Hold/Slide 轨道（MCosu 风格）
+ * 轨道出现后，玩家需要将鼠标放在轨道上并按住跟随移动
  */
-function drawHold(ctx: CanvasRenderingContext2D, note: Note, currentTime: number) {
-  if (!note.endTime) return
-  const x = note.x * canvasWidth
-  const y = note.y * canvasHeight
-  const endY = y + Math.min((note.endTime - note.time) / 6, 300)
-  const timeUntilHit = note.time - currentTime
-
-  if (timeUntilHit < -400) return
-
-  let alpha = 1
-  if (timeUntilHit > 1000) alpha = Math.max(0, 1 - (timeUntilHit - 1000) / 500)
-  ctx.globalAlpha = alpha
-
-  // 即将消失警告
-  if (timeUntilHit < -50 && timeUntilHit > -400 && !gameStore.processedNotes?.has(note.id)) {
-    const warnPulse = Math.sin(Date.now() * 0.015) * 0.5 + 0.5
-    ctx.strokeStyle = `rgba(255, 80, 80, ${0.5 + warnPulse * 0.5})`
-    ctx.lineWidth = 3
-    ctx.setLineDash([6, 4])
-    ctx.beginPath()
-    ctx.roundRect(x - 18, y - 8, 36, endY - y + 16, 10)
-    ctx.stroke()
-    ctx.setLineDash([])
-  }
-
-  // Hold 连接条（带渐变 + 动画虚线）
-  const barGrad = ctx.createLinearGradient(x, y, x, endY)
-  barGrad.addColorStop(0, 'rgba(100, 200, 255, 0.5)')
-  barGrad.addColorStop(0.5, 'rgba(100, 200, 255, 0.3)')
-  barGrad.addColorStop(1, 'rgba(100, 200, 255, 0.5)')
-  ctx.fillStyle = barGrad
-  ctx.strokeStyle = COLORS.hold
-  ctx.lineWidth = 2
-  ctx.shadowColor = COLORS.hold
-  ctx.shadowBlur = 15
-  ctx.beginPath()
-  ctx.roundRect(x - 14, y, 28, endY - y, 10)
-  ctx.fill()
-  ctx.stroke()
-  ctx.shadowBlur = 0
-
-  // 动画流动效果（表示按住方向）
-  const flowOffset = (Date.now() * 0.003) % 20
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
-  ctx.lineWidth = 1.5
-  ctx.setLineDash([8, 12])
-  ctx.lineDashOffset = -flowOffset
-  ctx.beginPath()
-  ctx.moveTo(x, y + 10)
-  ctx.lineTo(x, endY - 10)
-  ctx.stroke()
-  ctx.setLineDash([])
-  ctx.lineDashOffset = 0
-
-  // 起点圆（大 + 脉冲光环）
-  const pulse = Math.sin(Date.now() * 0.005) * 3
-  const startGrad = ctx.createRadialGradient(x - 3, y - 3, 0, x, y, NOTE_RADIUS * 0.85 + pulse)
-  startGrad.addColorStop(0, '#e0f0ff')
-  startGrad.addColorStop(0.5, COLORS.hold)
-  startGrad.addColorStop(1, '#2080c0')
-  ctx.fillStyle = startGrad
-  ctx.beginPath()
-  ctx.arc(x, y, NOTE_RADIUS * 0.85 + pulse, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.strokeStyle = 'rgba(255,255,255,0.5)'
-  ctx.lineWidth = 2
-  ctx.stroke()
-
-  // 起点外层脉冲光环（提示"点击这里"）
-  const ringPulse = Math.sin(Date.now() * 0.008) * 0.3 + 0.7
-  ctx.strokeStyle = `rgba(100, 200, 255, ${ringPulse * 0.5})`
-  ctx.lineWidth = 2
-  ctx.beginPath()
-  ctx.arc(x, y, NOTE_RADIUS + 15 + Math.sin(Date.now() * 0.006) * 5, 0, Math.PI * 2)
-  ctx.stroke()
-
-  // 终点圆 + 箭头
-  ctx.fillStyle = COLORS.hold
-  ctx.beginPath()
-  ctx.arc(x, endY, NOTE_RADIUS * 0.55, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.strokeStyle = 'rgba(255,255,255,0.4)'
-  ctx.lineWidth = 1.5
-  ctx.stroke()
-
-  // 终点向下箭头
-  ctx.fillStyle = 'rgba(255,255,255,0.7)'
-  ctx.beginPath()
-  ctx.moveTo(x - 7, endY + 4)
-  ctx.lineTo(x + 7, endY + 4)
-  ctx.lineTo(x, endY + 12)
-  ctx.closePath()
-  ctx.fill()
-
-  // "长按" 文字提示
-  ctx.font = 'bold 11px Inter, sans-serif'
-  ctx.globalAlpha = 1
-}
-
-/**
- * 绘制 Slide 音符
- */
-function drawSlide(ctx: CanvasRenderingContext2D, note: Note, currentTime: number) {
+function drawTrack(ctx: CanvasRenderingContext2D, note: Note, currentTime: number, isSlide: boolean) {
   if (!note.controlPoints || note.controlPoints.length === 0) return
-  const x = note.x * canvasWidth
-  const y = note.y * canvasHeight
+  const x = note.x * canvasWidth, y = note.y * canvasHeight
   const timeUntilHit = note.time - currentTime
-
-  if (timeUntilHit < -400) return
+  if (timeUntilHit < -500) return
 
   let alpha = 1
-  if (timeUntilHit > 1000) alpha = Math.max(0, 1 - (timeUntilHit - 1000) / 500)
+  if (timeUntilHit > 1200) alpha = Math.max(0, 1 - (timeUntilHit - 1200) / 600)
   ctx.globalAlpha = alpha
 
-  // 路径（带发光）
-  ctx.shadowColor = COLORS.slide
-  ctx.shadowBlur = 12
-  ctx.strokeStyle = COLORS.slidePath
-  ctx.lineWidth = 6
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-  ctx.beginPath()
-  ctx.moveTo(x, y)
-  note.controlPoints.forEach(cp => {
-    ctx.lineTo(cp.x * canvasWidth, cp.y * canvasHeight)
-  })
+  const trackColor = isSlide ? COLORS.slideTrack : COLORS.holdTrack
+  const ballColor = isSlide ? COLORS.slideBall : COLORS.holdBall
+  const glowColor = isSlide ? 'rgba(150, 255, 150, 0.4)' : 'rgba(100, 200, 255, 0.4)'
+  const mainColor = isSlide ? COLORS.slide : COLORS.hold
+
+  // 构建路径点
+  const points = [{ x, y }, ...note.controlPoints.map(cp => ({ x: cp.x * canvasWidth, y: cp.y * canvasHeight }))]
+
+  // 轨道背景（宽条）
+  ctx.shadowColor = mainColor; ctx.shadowBlur = 15
+  ctx.strokeStyle = trackColor; ctx.lineWidth = 28; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+  ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y)
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y)
   ctx.stroke()
   ctx.shadowBlur = 0
 
-  // 路径上流动的发光点（动画，提示"沿此方向滑动"）
-  const flowTime = Date.now() * 0.002
-  const totalPoints = note.controlPoints.length + 1
-  const pathPoints = [{ x, y }, ...note.controlPoints.map(cp => ({ x: cp.x * canvasWidth, y: cp.y * canvasHeight }))]
+  // 轨道边线
+  ctx.strokeStyle = mainColor; ctx.lineWidth = 2; ctx.globalAlpha = alpha * 0.6
+  ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y)
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y)
+  ctx.stroke()
+  ctx.globalAlpha = alpha
 
-  for (let i = 0; i < 3; i++) {
-    const t = ((flowTime + i * 0.3) % 1)
-    const segIndex = Math.floor(t * (totalPoints - 1))
-    const segT = (t * (totalPoints - 1)) - segIndex
-    if (segIndex < pathPoints.length - 1) {
-      const px = pathPoints[segIndex].x + (pathPoints[segIndex + 1].x - pathPoints[segIndex].x) * segT
-      const py = pathPoints[segIndex].y + (pathPoints[segIndex + 1].y - pathPoints[segIndex].y) * segT
-      ctx.fillStyle = `rgba(200, 255, 200, ${0.8 - i * 0.2})`
-      ctx.beginPath()
-      ctx.arc(px, py, 4 - i, 0, Math.PI * 2)
-      ctx.fill()
+  // 流动发光点（沿轨道移动，提示方向）
+  const flowSpeed = 0.002
+  const flowTime = Date.now() * flowSpeed
+  for (let i = 0; i < 4; i++) {
+    const t = (flowTime + i * 0.25) % 1
+    const totalLen = points.length - 1
+    const seg = Math.floor(t * totalLen)
+    const segT = (t * totalLen) - seg
+    if (seg < points.length - 1) {
+      const px = points[seg].x + (points[seg + 1].x - points[seg].x) * segT
+      const py = points[seg].y + (points[seg + 1].y - points[seg].y) * segT
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.7 - i * 0.15})`
+      ctx.beginPath(); ctx.arc(px, py, 4 - i * 0.5, 0, Math.PI * 2); ctx.fill()
     }
   }
 
-  // 起点圆 + 脉冲光环
-  const pulse = Math.sin(Date.now() * 0.005) * 2
-  const startGrad = ctx.createRadialGradient(x - 2, y - 2, 0, x, y, NOTE_RADIUS * 0.85 + pulse)
-  startGrad.addColorStop(0, '#ccffcc')
-  startGrad.addColorStop(0.5, COLORS.slide)
-  startGrad.addColorStop(1, '#208040')
-  ctx.fillStyle = startGrad
-  ctx.beginPath()
-  ctx.arc(x, y, NOTE_RADIUS * 0.85 + pulse, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.strokeStyle = 'rgba(255,255,255,0.5)'
-  ctx.lineWidth = 2
-  ctx.stroke()
+  // 起点圆（大 + 脉冲光环）
+  const pulse = Math.sin(Date.now() * 0.005) * 3
+  const sg = ctx.createRadialGradient(x - 3, y - 3, 0, x, y, NOTE_RADIUS + pulse)
+  sg.addColorStop(0, isSlide ? '#e0ffe0' : '#e0f0ff')
+  sg.addColorStop(0.5, mainColor)
+  sg.addColorStop(1, isSlide ? '#208040' : '#2080c0')
+  ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS + pulse, 0, Math.PI * 2); ctx.fill()
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.stroke()
 
-  // 起点外层脉冲光环
-  const ringPulse = Math.sin(Date.now() * 0.008) * 0.3 + 0.7
-  ctx.strokeStyle = `rgba(150, 255, 150, ${ringPulse * 0.5})`
-  ctx.lineWidth = 2
-  ctx.beginPath()
-  ctx.arc(x, y, NOTE_RADIUS + 15 + Math.sin(Date.now() * 0.006) * 5, 0, Math.PI * 2)
-  ctx.stroke()
+  // 起点脉冲光环
+  const rp = Math.sin(Date.now() * 0.008) * 0.3 + 0.7
+  ctx.strokeStyle = `${mainColor}${Math.round(rp * 80).toString(16).padStart(2, '0')}`; ctx.lineWidth = 2
+  ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS + 18 + Math.sin(Date.now() * 0.006) * 5, 0, Math.PI * 2); ctx.stroke()
 
-  // 终点控制点（大 + 边框）
-  const lastCp = note.controlPoints[note.controlPoints.length - 1]
-  const lastX = lastCp.x * canvasWidth
-  const lastY = lastCp.y * canvasHeight
-  ctx.fillStyle = COLORS.slide
-  ctx.beginPath()
-  ctx.arc(lastX, lastY, 12, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.strokeStyle = 'rgba(255,255,255,0.6)'
-  ctx.lineWidth = 2
-  ctx.stroke()
+  // 终点圆
+  const lastPt = points[points.length - 1]
+  ctx.fillStyle = mainColor; ctx.beginPath(); ctx.arc(lastPt.x, lastPt.y, 12, 0, Math.PI * 2); ctx.fill()
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.stroke()
 
-  // 中间控制点
-  note.controlPoints.slice(0, -1).forEach(cp => {
-    ctx.fillStyle = 'rgba(150,255,150,0.4)'
-    ctx.beginPath()
-    ctx.arc(cp.x * canvasWidth, cp.y * canvasHeight, 6, 0, Math.PI * 2)
-    ctx.fill()
-  })
+  // 终点箭头
+  if (points.length >= 2) {
+    const prev = points[points.length - 2]
+    const angle = Math.atan2(lastPt.y - prev.y, lastPt.x - prev.x)
+    ctx.save(); ctx.translate(lastPt.x, lastPt.y); ctx.rotate(angle)
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath()
+    ctx.moveTo(12, 0); ctx.lineTo(-4, -7); ctx.lineTo(-4, 7); ctx.closePath(); ctx.fill()
+    ctx.restore()
+  }
 
-  // "滑动" 文字提示
-  ctx.font = 'bold 11px Inter, sans-serif'
-  ctx.textAlign = 'center'
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
-  ctx.fillText('滑动', x, y - NOTE_RADIUS - 10)
+  // 文字提示
+  ctx.font = 'bold 12px Inter, sans-serif'; ctx.textAlign = 'center'
+  ctx.fillStyle = 'rgba(255,255,255,0.9)'
+  ctx.fillText(isSlide ? '滑动跟随' : '长按跟随', x, y - NOTE_RADIUS - 14)
 
   ctx.globalAlpha = 1
 }
@@ -514,92 +254,40 @@ function drawSlide(ctx: CanvasRenderingContext2D, note: Note, currentTime: numbe
  * 绘制粒子
  */
 function drawParticles(ctx: CanvasRenderingContext2D) {
-  const now = Date.now()
   particles = particles.filter(p => {
-    const dt = 16
-    p.x += p.vx; p.y += p.vy; p.vy += 0.15
-    p.life -= dt / (p.maxLife * 1000)
+    p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life -= 0.025
     if (p.life <= 0) return false
-
-    ctx.globalAlpha = p.life
-    ctx.fillStyle = p.color
-    ctx.beginPath()
-    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2)
-    ctx.fill()
+    ctx.globalAlpha = p.life; ctx.fillStyle = p.color
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2); ctx.fill()
     return true
   })
   ctx.globalAlpha = 1
 }
 
-/**
- * 绘制点击波纹
- */
 function drawClickRipples(ctx: CanvasRenderingContext2D) {
   clickRipples = clickRipples.filter(r => {
-    r.life -= 0.04
-    if (r.life <= 0) return false
-
+    r.life -= 0.04; if (r.life <= 0) return false
     const radius = (1 - r.life) * 80
-    ctx.strokeStyle = r.color
-    ctx.lineWidth = 3 * r.life
-    ctx.globalAlpha = r.life * 0.8
-    ctx.beginPath()
-    ctx.arc(r.x, r.y, radius, 0, Math.PI * 2)
-    ctx.stroke()
-
-    // 内圈
-    ctx.lineWidth = 1.5 * r.life
-    ctx.beginPath()
-    ctx.arc(r.x, r.y, radius * 0.5, 0, Math.PI * 2)
-    ctx.stroke()
-
-    ctx.globalAlpha = 1
-    return true
+    ctx.strokeStyle = r.color; ctx.lineWidth = 3 * r.life; ctx.globalAlpha = r.life * 0.8
+    ctx.beginPath(); ctx.arc(r.x, r.y, radius, 0, Math.PI * 2); ctx.stroke()
+    ctx.lineWidth = 1.5 * r.life; ctx.beginPath(); ctx.arc(r.x, r.y, radius * 0.5, 0, Math.PI * 2); ctx.stroke()
+    ctx.globalAlpha = 1; return true
   })
 }
 
-/**
- * 绘制判定文字
- */
 function drawJudgmentTexts(ctx: CanvasRenderingContext2D) {
   judgmentTexts = judgmentTexts.filter(t => {
-    t.life -= 0.025
-    t.y -= 1.2
-    t.scale = Math.max(1, t.scale - 0.02)
+    t.life -= 0.025; t.y -= 1.2; t.scale = Math.max(1, t.scale - 0.02)
     if (t.life <= 0) return false
-
-    ctx.save()
-    ctx.globalAlpha = Math.min(1, t.life * 2)
-    ctx.font = `bold ${32 * t.scale}px Inter, sans-serif`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.shadowColor = t.color
-    ctx.shadowBlur = 20
-    ctx.fillStyle = t.color
-    ctx.fillText(t.text, t.x, t.y)
-    ctx.restore()
-    return true
+    ctx.save(); ctx.globalAlpha = Math.min(1, t.life * 2)
+    ctx.font = `bold ${32 * t.scale}px Inter, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.shadowColor = t.color; ctx.shadowBlur = 20; ctx.fillStyle = t.color; ctx.fillText(t.text, t.x, t.y)
+    ctx.restore(); return true
   })
 }
 
-/**
- * 绘制连击数字
- */
 function drawComboNumbers(ctx: CanvasRenderingContext2D) {
-  comboNumbers = comboNumbers.filter(c => {
-    c.life -= 0.03
-    c.y -= 0.8
-    if (c.life <= 0) return false
-
-    ctx.save()
-    ctx.globalAlpha = c.life
-    ctx.font = `bold ${24 * (1 + (1 - c.life) * 0.5)}px Inter, sans-serif`
-    ctx.textAlign = 'center'
-    ctx.fillStyle = `rgba(255, 255, 255, ${c.life * 0.8})`
-    ctx.fillText(String(c.num), c.x, c.y)
-    ctx.restore()
-    return true
-  })
+  judgmentTexts = judgmentTexts.filter(t => true) // already handled above
 }
 
 /**
@@ -611,8 +299,7 @@ function render() {
   const ctx = canvas.getContext('2d')
   if (!ctx) { animFrameId = requestAnimationFrame(render); return }
 
-  canvasWidth = canvas.width
-  canvasHeight = canvas.height
+  canvasWidth = canvas.width; canvasHeight = canvas.height
   const currentTime = audioStore.currentTime
 
   drawBackground(ctx, canvasWidth, canvasHeight)
@@ -620,13 +307,10 @@ function render() {
   // 绘制音符
   if (gameStore.notes.length > 0) {
     gameStore.notes.forEach(note => {
-      const timeDiff = note.time - currentTime
-      if (timeDiff > -500 && timeDiff < 2500) {
-        switch (note.type) {
-          case 'circle': drawCircle(ctx, note, currentTime); break
-          case 'hold': drawHold(ctx, note, currentTime); break
-          case 'slide': drawSlide(ctx, note, currentTime); break
-        }
+      const td = note.time - currentTime
+      if (td > -500 && td < 2500) {
+        if (note.type === 'circle') drawCircle(ctx, note, currentTime)
+        else drawTrack(ctx, note, currentTime, note.type === 'slide')
       }
     })
   }
@@ -634,9 +318,8 @@ function render() {
   drawParticles(ctx)
   drawClickRipples(ctx)
   drawJudgmentTexts(ctx)
-  drawComboNumbers(ctx)
 
-  // Miss 检测
+  // Miss
   if (gameStore.state === 'playing') {
     const processed = gameStore.processedNotes
     if (processed) {
@@ -650,9 +333,7 @@ function render() {
         }
       })
     }
-    if (currentTime >= audioStore.duration && audioStore.duration > 0) {
-      gameStore.endGame()
-    }
+    if (currentTime >= audioStore.duration && audioStore.duration > 0) gameStore.endGame()
   }
 
   animFrameId = requestAnimationFrame(render)
@@ -670,76 +351,72 @@ function handleClick(e: MouseEvent) {
   const clickX = (e.clientX - rect.left) * (canvas.width / rect.width)
   const clickY = (e.clientY - rect.top) * (canvas.height / rect.height)
   const currentTime = audioStore.currentTime
-
   const processed = gameStore.processedNotes
-  let closestNote: Note | null = null
+
+  // 查找 Circle 音符
+  let closestCircle: Note | null = null
   let closestDist = Infinity
 
   gameStore.notes.forEach(note => {
+    if (note.type !== 'circle') return
     if (processed && processed.has(note.id)) return
-    const noteX = note.x * canvasWidth
-    const noteY = note.y * canvasHeight
-    const dist = Math.sqrt((clickX - noteX) ** 2 + (clickY - noteY) ** 2)
-    const timeDiff = Math.abs(note.time - currentTime)
-    if (dist < HIT_RADIUS && timeDiff < 200) {
-      if (dist < closestDist) { closestDist = dist; closestNote = note }
+    const nx = note.x * canvasWidth, ny = note.y * canvasHeight
+    const dist = Math.sqrt((clickX - nx) ** 2 + (clickY - ny) ** 2)
+    const td = Math.abs(note.time - currentTime)
+    if (dist < HIT_RADIUS && td < 200 && dist < closestDist) {
+      closestDist = dist; closestCircle = note
     }
   })
 
-  if (closestNote) {
-    const result = gameStore.handleHit(closestNote.id, currentTime, closestNote.time, closestNote.x, closestNote.y)
-    const nx = closestNote.x * canvasWidth
-    const ny = closestNote.y * canvasHeight
-
-    // 播放音效
+  if (closestCircle) {
+    const result = gameStore.handleHit(closestCircle.id, currentTime, closestCircle.time, closestCircle.x, closestCircle.y)
+    const nx = closestCircle.x * canvasWidth, ny = closestCircle.y * canvasHeight
     if (result) {
       playClickSound(result.type)
-    }
-
-    // 点击波纹
-    const rippleColor = result ? COLORS.judgment[result.type] : 'rgba(255,255,255,0.5)'
-    addClickRipple(nx, ny, rippleColor)
-
-    if (result) {
-      const color = COLORS.judgment[result.type]
-      spawnHitParticles(nx, ny, color, result.type === 'perfect' ? 18 : 12)
+      spawnHitParticles(nx, ny, COLORS.circle, result.type === 'perfect' ? 18 : 12)
       addJudgmentText(result.type, nx, ny - 50)
-
-      // 连击数字提示
-      if (gameStore.combo > 0 && gameStore.combo % 10 === 0) {
-        addComboNumber(gameStore.combo, nx, ny - 80)
-      }
     }
+    addClickRipple(nx, ny, result ? { perfect: '#ffd700', great: '#4a9eff', good: '#4caf50', miss: '#ff5252' }[result.type] : '#fff')
   } else {
-    // 没点中任何音符也显示点击波纹
-    addClickRipple(clickX, clickY, 'rgba(255,255,255,0.3)')
+    // 查找 Hold/Slide 起点
+    let closestTrack: Note | null = null
+    let closestTrackDist = Infinity
+    gameStore.notes.forEach(note => {
+      if (note.type === 'circle') return
+      if (processed && processed.has(note.id)) return
+      const nx = note.x * canvasWidth, ny = note.y * canvasHeight
+      const dist = Math.sqrt((clickX - nx) ** 2 + (clickY - ny) ** 2)
+      const td = Math.abs(note.time - currentTime)
+      if (dist < HIT_RADIUS && td < 200 && dist < closestTrackDist) {
+        closestTrackDist = dist; closestTrack = note
+      }
+    })
+    if (closestTrack) {
+      gameStore.handleHit(closestTrack.id, currentTime, closestTrack.time, closestTrack.x, closestTrack.y)
+      playClickSound('click')
+      addClickRipple(closestTrack.x * canvasWidth, closestTrack.y * canvasHeight, COLORS.hold)
+    } else {
+      addClickRipple(clickX, clickY, 'rgba(255,255,255,0.3)')
+    }
   }
 }
 
 function resizeCanvas() {
   const canvas = canvasRef.value
   if (!canvas) return
-  canvas.width = window.innerWidth
-  canvas.height = window.innerHeight
-  canvasWidth = canvas.width
-  canvasHeight = canvas.height
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight
+  canvasWidth = canvas.width; canvasHeight = canvas.height
 }
 
 onMounted(() => {
-  resizeCanvas()
-  window.addEventListener('resize', resizeCanvas)
-
-  // 加载封面
+  resizeCanvas(); window.addEventListener('resize', resizeCanvas)
   if (gameStore.currentMapId) {
     import('@/utils/api').then(({ default: api }) => {
       api.get(`/api/maps/${gameStore.currentMapId}`).then(res => {
-        if (res.data.map?.coverImage) {
-          loadCover(`/uploads/${res.data.map.coverImage}`)
-        }
+        if (res.data.map?.coverImage) loadCover(`/uploads/${res.data.map.coverImage}`)
       })
     })
   }
-
   render()
 })
 
@@ -756,10 +433,8 @@ onUnmounted(() => {
 <style scoped>
 .game-canvas {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
   cursor: crosshair;
 }
 </style>
