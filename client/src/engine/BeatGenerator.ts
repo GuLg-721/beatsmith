@@ -74,33 +74,39 @@ function generateSimple(beats: Beat[]): Note[] {
 }
 
 /**
- * 进阶模式：重拍 Circle + 弱拍 Hold
+ * 进阶模式：重拍 Circle/Tap + 弱拍 Hold
+ * 注意：Tap 和 Hold 不会同时出现
  */
 function generateAdvanced(beats: Beat[], bpm: number): Note[] {
   const notes: Note[] = []
   const intervalMs = 60000 / bpm
+  let lastHoldEnd = 0 // 跟踪 Hold 结束时间，避免冲突
 
   beats.forEach((beat, i) => {
     const pos = randomPosition(notes, 1)
 
+    // 检查是否在 Hold 时间范围内
+    if (beat.time < lastHoldEnd) return
+
     if (i % 4 === 0) {
-      // 重拍：Circle
+      // 重拍：交替 Circle 和 Tap
       notes.push({
         id: nanoid(8),
-        type: 'circle',
+        type: i % 8 === 0 ? 'circle' : 'tap',
         time: beat.time,
         x: pos.x,
         y: pos.y
       })
     } else if (i % 4 === 2) {
       // 弱拍：Hold（持续半拍）
+      lastHoldEnd = beat.time + intervalMs / 2
       notes.push({
         id: nanoid(8),
         type: 'hold',
         time: beat.time,
         x: pos.x,
         y: pos.y,
-        endTime: beat.time + intervalMs / 2
+        endTime: lastHoldEnd
       })
     }
   })
@@ -110,14 +116,21 @@ function generateAdvanced(beats: Beat[], bpm: number): Note[] {
 
 /**
  * 自定义模式：根据用户参数生成
+ * 规则：Tap 和 Hold 不会同时出现；Tap 会连续出现
  */
 function generateCustom(beats: Beat[], options: CustomOptions): Note[] {
   const notes: Note[] = []
   const total = Math.floor(beats.length * options.density)
   const step = Math.max(1, Math.floor(beats.length / total))
+  let lastHoldEnd = 0
+  let tapClusterCount = 0 // Tap 连续计数
 
   for (let i = 0; i < beats.length; i += step) {
     const beat = beats[i]
+
+    // 跳过 Hold 时间范围内的节拍
+    if (beat.time < lastHoldEnd) continue
+
     const pos = randomPosition(notes, 1)
 
     // 根据比例随机选择类型
@@ -126,10 +139,19 @@ function generateCustom(beats: Beat[], options: CustomOptions): Note[] {
 
     if (rand < options.circleRatio) {
       type = 'circle'
+      tapClusterCount = 0
     } else if (rand < options.circleRatio + options.tapRatio) {
       type = 'tap'
+      tapClusterCount++
     } else {
       type = 'hold'
+      tapClusterCount = 0
+    }
+
+    // Tap 连续出现：如果前几个是 Tap，下一个大概率也是 Tap
+    if (tapClusterCount > 0 && tapClusterCount < 4 && Math.random() < 0.7) {
+      type = 'tap'
+      tapClusterCount++
     }
 
     const note: Note = {
@@ -143,6 +165,8 @@ function generateCustom(beats: Beat[], options: CustomOptions): Note[] {
     if (type === 'hold') {
       const nextBeat = beats[Math.min(i + step, beats.length - 1)]
       note.endTime = nextBeat.time
+      lastHoldEnd = nextBeat.time
+      tapClusterCount = 0
     }
 
     notes.push(note)

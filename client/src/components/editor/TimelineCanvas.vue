@@ -30,9 +30,10 @@ const COLORS = {
   playhead: 'rgba(255, 100, 150, 0.9)',
   circle: 'rgba(255, 100, 150, 0.9)',
   circleStroke: 'rgba(255, 100, 150, 1)',
+  tap: 'rgba(255, 140, 0, 0.9)',
+  tapStroke: 'rgba(255, 140, 0, 1)',
   hold: 'rgba(100, 200, 255, 0.4)',
   holdStroke: 'rgba(100, 200, 255, 0.8)',
-  slide: 'rgba(150, 255, 150, 0.8)',
   selected: 'rgba(255, 255, 100, 0.9)',
   selectedGlow: 'rgba(255, 255, 100, 0.3)',
 }
@@ -124,78 +125,54 @@ function drawNotes(ctx: CanvasRenderingContext2D, width: number) {
     const x = timeToX(note.time)
     const y = normToY(note.y)
 
-    if (x < -50 || x > width + 50) return // 跳过不可见的音符
+    if (x < -50 || x > width + 50) return
 
     const isSelected = note.id === editorStore.selectedNoteId
     const color = isSelected ? COLORS.selected : (
       note.type === 'circle' ? COLORS.circle :
+      note.type === 'tap' ? COLORS.tap :
       note.type === 'hold' ? COLORS.holdStroke :
-      COLORS.slide
+      COLORS.circle
     )
 
-    if (note.type === 'circle') {
-      // Circle 音符
-      if (isSelected) {
-        ctx.fillStyle = COLORS.selectedGlow
-        ctx.beginPath()
-        ctx.arc(x, y, NOTE_RADIUS + 8, 0, Math.PI * 2)
-        ctx.fill()
-      }
+    // 选中高亮
+    if (isSelected) {
+      ctx.fillStyle = COLORS.selectedGlow
+      ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS + 8, 0, Math.PI * 2); ctx.fill()
+    }
 
+    if (note.type === 'circle') {
       ctx.fillStyle = color
       ctx.strokeStyle = COLORS.circleStroke
       ctx.lineWidth = 2
+      ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
+    }
+
+    if (note.type === 'tap') {
+      // Tap 音符：橙色菱形
+      ctx.fillStyle = color
+      ctx.strokeStyle = COLORS.tapStroke
+      ctx.lineWidth = 2
       ctx.beginPath()
-      ctx.arc(x, y, NOTE_RADIUS, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.stroke()
+      ctx.moveTo(x, y - NOTE_RADIUS)
+      ctx.lineTo(x + NOTE_RADIUS * 0.8, y)
+      ctx.lineTo(x, y + NOTE_RADIUS)
+      ctx.lineTo(x - NOTE_RADIUS * 0.8, y)
+      ctx.closePath()
+      ctx.fill(); ctx.stroke()
     }
 
     if (note.type === 'hold' && note.endTime) {
-      // Hold 音符
       const endX = timeToX(note.endTime)
-
       ctx.fillStyle = COLORS.hold
       ctx.fillRect(x, y - 6, endX - x, 12)
-
       ctx.fillStyle = color
-      ctx.beginPath()
-      ctx.arc(x, y, NOTE_RADIUS * 0.7, 0, Math.PI * 2)
-      ctx.fill()
-
-      ctx.beginPath()
-      ctx.arc(endX, y, NOTE_RADIUS * 0.7, 0, Math.PI * 2)
-      ctx.fill()
-
+      ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS * 0.7, 0, Math.PI * 2); ctx.fill()
+      ctx.beginPath(); ctx.arc(endX, y, NOTE_RADIUS * 0.7, 0, Math.PI * 2); ctx.fill()
       if (isSelected) {
-        ctx.strokeStyle = COLORS.selected
-        ctx.lineWidth = 2
+        ctx.strokeStyle = COLORS.selected; ctx.lineWidth = 2
         ctx.strokeRect(x - 2, y - 8, endX - x + 4, 16)
       }
-    }
-
-    if (note.type === 'slide' && note.controlPoints) {
-      // Slide 音符
-      ctx.strokeStyle = color
-      ctx.lineWidth = 3
-      ctx.beginPath()
-      ctx.moveTo(x, y)
-      note.controlPoints.forEach(cp => {
-        ctx.lineTo(timeToX(note.time + (cp.x * 500)), normToY(cp.y))
-      })
-      ctx.stroke()
-
-      // 绘制控制点
-      ctx.fillStyle = color
-      ctx.beginPath()
-      ctx.arc(x, y, NOTE_RADIUS * 0.6, 0, Math.PI * 2)
-      ctx.fill()
-
-      note.controlPoints.forEach(cp => {
-        ctx.beginPath()
-        ctx.arc(timeToX(note.time + (cp.x * 500)), normToY(cp.y), 5, 0, Math.PI * 2)
-        ctx.fill()
-      })
     }
   })
 }
