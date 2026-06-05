@@ -19,6 +19,58 @@ const coverLoaded = ref(false)
 const NOTE_RADIUS = 24
 const HIT_RADIUS = 50
 
+// 点击音效
+let clickAudioCtx: AudioContext | null = null
+
+function playClickSound(type: string) {
+  if (!clickAudioCtx) {
+    clickAudioCtx = new AudioContext()
+  }
+  const ctx = clickAudioCtx
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+
+  switch (type) {
+    case 'perfect':
+      osc.frequency.setValueAtTime(880, ctx.currentTime)
+      osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.05)
+      gain.gain.setValueAtTime(0.3, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1)
+      osc.type = 'sine'
+      break
+    case 'great':
+      osc.frequency.setValueAtTime(660, ctx.currentTime)
+      gain.gain.setValueAtTime(0.25, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08)
+      osc.type = 'sine'
+      break
+    case 'good':
+      osc.frequency.setValueAtTime(440, ctx.currentTime)
+      gain.gain.setValueAtTime(0.2, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06)
+      osc.type = 'triangle'
+      break
+    case 'miss':
+      osc.frequency.setValueAtTime(200, ctx.currentTime)
+      osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.15)
+      gain.gain.setValueAtTime(0.15, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15)
+      osc.type = 'sawtooth'
+      break
+    case 'click':
+      osc.frequency.setValueAtTime(1200, ctx.currentTime)
+      gain.gain.setValueAtTime(0.1, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03)
+      osc.type = 'sine'
+      break
+  }
+
+  osc.start(ctx.currentTime)
+  osc.stop(ctx.currentTime + 0.2)
+}
+
 // 点击波纹
 interface ClickRipple {
   x: number; y: number; life: number; color: string
@@ -122,8 +174,8 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
   // 封面背景（清晰但暗化）
   if (coverLoaded.value && coverImage.value) {
     ctx.save()
-    ctx.globalAlpha = 0.35
-    ctx.filter = 'blur(8px) saturate(1.3) brightness(0.8)'
+    ctx.globalAlpha = 0.45
+    ctx.filter = 'blur(5px) saturate(1.2) brightness(0.85)'
 
     // 居中裁剪填充
     const imgAspect = coverImage.value.width / coverImage.value.height
@@ -284,7 +336,7 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, currentTime: number
     ctx.setLineDash([])
   }
 
-  // Hold 连接条（带渐变）
+  // Hold 连接条（带渐变 + 动画虚线）
   const barGrad = ctx.createLinearGradient(x, y, x, endY)
   barGrad.addColorStop(0, 'rgba(100, 200, 255, 0.5)')
   barGrad.addColorStop(0.5, 'rgba(100, 200, 255, 0.3)')
@@ -300,7 +352,20 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, currentTime: number
   ctx.stroke()
   ctx.shadowBlur = 0
 
-  // 起点圆（大，明显 + 脉冲）
+  // 动画流动效果（表示按住方向）
+  const flowOffset = (Date.now() * 0.003) % 20
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
+  ctx.lineWidth = 1.5
+  ctx.setLineDash([8, 12])
+  ctx.lineDashOffset = -flowOffset
+  ctx.beginPath()
+  ctx.moveTo(x, y + 10)
+  ctx.lineTo(x, endY - 10)
+  ctx.stroke()
+  ctx.setLineDash([])
+  ctx.lineDashOffset = 0
+
+  // 起点圆（大 + 脉冲光环）
   const pulse = Math.sin(Date.now() * 0.005) * 3
   const startGrad = ctx.createRadialGradient(x - 3, y - 3, 0, x, y, NOTE_RADIUS * 0.85 + pulse)
   startGrad.addColorStop(0, '#e0f0ff')
@@ -310,31 +375,38 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, currentTime: number
   ctx.beginPath()
   ctx.arc(x, y, NOTE_RADIUS * 0.85 + pulse, 0, Math.PI * 2)
   ctx.fill()
-  ctx.strokeStyle = 'rgba(255,255,255,0.4)'
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'
   ctx.lineWidth = 2
   ctx.stroke()
 
-  // 终点圆
+  // 起点外层脉冲光环（提示"点击这里"）
+  const ringPulse = Math.sin(Date.now() * 0.008) * 0.3 + 0.7
+  ctx.strokeStyle = `rgba(100, 200, 255, ${ringPulse * 0.5})`
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.arc(x, y, NOTE_RADIUS + 15 + Math.sin(Date.now() * 0.006) * 5, 0, Math.PI * 2)
+  ctx.stroke()
+
+  // 终点圆 + 箭头
   ctx.fillStyle = COLORS.hold
   ctx.beginPath()
-  ctx.arc(x, endY, NOTE_RADIUS * 0.5, 0, Math.PI * 2)
+  ctx.arc(x, endY, NOTE_RADIUS * 0.55, 0, Math.PI * 2)
   ctx.fill()
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)'
+  ctx.lineWidth = 1.5
+  ctx.stroke()
 
-  // 终点箭头提示
+  // 终点向下箭头
   ctx.fillStyle = 'rgba(255,255,255,0.7)'
   ctx.beginPath()
-  ctx.moveTo(x - 8, endY - 10)
-  ctx.lineTo(x + 8, endY - 10)
-  ctx.lineTo(x, endY - 2)
+  ctx.moveTo(x - 7, endY + 4)
+  ctx.lineTo(x + 7, endY + 4)
+  ctx.lineTo(x, endY + 12)
   ctx.closePath()
   ctx.fill()
 
-  // "HOLD" 文字提示
+  // "长按" 文字提示
   ctx.font = 'bold 11px Inter, sans-serif'
-  ctx.textAlign = 'center'
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-  ctx.fillText('HOLD', x, y - NOTE_RADIUS - 8)
-
   ctx.globalAlpha = 1
 }
 
@@ -353,7 +425,7 @@ function drawSlide(ctx: CanvasRenderingContext2D, note: Note, currentTime: numbe
   if (timeUntilHit > 1000) alpha = Math.max(0, 1 - (timeUntilHit - 1000) / 500)
   ctx.globalAlpha = alpha
 
-  // 路径（带发光 + 方向箭头）
+  // 路径（带发光）
   ctx.shadowColor = COLORS.slide
   ctx.shadowBlur = 12
   ctx.strokeStyle = COLORS.slidePath
@@ -368,24 +440,26 @@ function drawSlide(ctx: CanvasRenderingContext2D, note: Note, currentTime: numbe
   ctx.stroke()
   ctx.shadowBlur = 0
 
-  // 路径上的方向箭头
-  const lastCp = note.controlPoints[note.controlPoints.length - 1]
-  const arrowX = (x + lastCp.x * canvasWidth) / 2
-  const arrowY = (y + lastCp.y * canvasHeight) / 2
-  const angle = Math.atan2(lastCp.y * canvasHeight - y, lastCp.x * canvasWidth - x)
-  ctx.save()
-  ctx.translate(arrowX, arrowY)
-  ctx.rotate(angle)
-  ctx.fillStyle = 'rgba(150, 255, 150, 0.7)'
-  ctx.beginPath()
-  ctx.moveTo(10, 0)
-  ctx.lineTo(-5, -6)
-  ctx.lineTo(-5, 6)
-  ctx.closePath()
-  ctx.fill()
-  ctx.restore()
+  // 路径上流动的发光点（动画，提示"沿此方向滑动"）
+  const flowTime = Date.now() * 0.002
+  const totalPoints = note.controlPoints.length + 1
+  const pathPoints = [{ x, y }, ...note.controlPoints.map(cp => ({ x: cp.x * canvasWidth, y: cp.y * canvasHeight }))]
 
-  // 起点圆（脉冲）
+  for (let i = 0; i < 3; i++) {
+    const t = ((flowTime + i * 0.3) % 1)
+    const segIndex = Math.floor(t * (totalPoints - 1))
+    const segT = (t * (totalPoints - 1)) - segIndex
+    if (segIndex < pathPoints.length - 1) {
+      const px = pathPoints[segIndex].x + (pathPoints[segIndex + 1].x - pathPoints[segIndex].x) * segT
+      const py = pathPoints[segIndex].y + (pathPoints[segIndex + 1].y - pathPoints[segIndex].y) * segT
+      ctx.fillStyle = `rgba(200, 255, 200, ${0.8 - i * 0.2})`
+      ctx.beginPath()
+      ctx.arc(px, py, 4 - i, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+
+  // 起点圆 + 脉冲光环
   const pulse = Math.sin(Date.now() * 0.005) * 2
   const startGrad = ctx.createRadialGradient(x - 2, y - 2, 0, x, y, NOTE_RADIUS * 0.85 + pulse)
   startGrad.addColorStop(0, '#ccffcc')
@@ -395,31 +469,43 @@ function drawSlide(ctx: CanvasRenderingContext2D, note: Note, currentTime: numbe
   ctx.beginPath()
   ctx.arc(x, y, NOTE_RADIUS * 0.85 + pulse, 0, Math.PI * 2)
   ctx.fill()
-  ctx.strokeStyle = 'rgba(255,255,255,0.4)'
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'
   ctx.lineWidth = 2
   ctx.stroke()
 
-  // 控制点
-  note.controlPoints.forEach((cp, i) => {
-    const cx = cp.x * canvasWidth
-    const cy = cp.y * canvasHeight
-    const isLast = i === note.controlPoints!.length - 1
-    ctx.fillStyle = isLast ? COLORS.slide : 'rgba(150,255,150,0.4)'
+  // 起点外层脉冲光环
+  const ringPulse = Math.sin(Date.now() * 0.008) * 0.3 + 0.7
+  ctx.strokeStyle = `rgba(150, 255, 150, ${ringPulse * 0.5})`
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.arc(x, y, NOTE_RADIUS + 15 + Math.sin(Date.now() * 0.006) * 5, 0, Math.PI * 2)
+  ctx.stroke()
+
+  // 终点控制点（大 + 边框）
+  const lastCp = note.controlPoints[note.controlPoints.length - 1]
+  const lastX = lastCp.x * canvasWidth
+  const lastY = lastCp.y * canvasHeight
+  ctx.fillStyle = COLORS.slide
+  ctx.beginPath()
+  ctx.arc(lastX, lastY, 12, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)'
+  ctx.lineWidth = 2
+  ctx.stroke()
+
+  // 中间控制点
+  note.controlPoints.slice(0, -1).forEach(cp => {
+    ctx.fillStyle = 'rgba(150,255,150,0.4)'
     ctx.beginPath()
-    ctx.arc(cx, cy, isLast ? 10 : 6, 0, Math.PI * 2)
+    ctx.arc(cp.x * canvasWidth, cp.y * canvasHeight, 6, 0, Math.PI * 2)
     ctx.fill()
-    if (isLast) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.5)'
-      ctx.lineWidth = 2
-      ctx.stroke()
-    }
   })
 
-  // "SLIDE" 文字提示
+  // "滑动" 文字提示
   ctx.font = 'bold 11px Inter, sans-serif'
   ctx.textAlign = 'center'
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-  ctx.fillText('SLIDE', x, y - NOTE_RADIUS - 8)
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+  ctx.fillText('滑动', x, y - NOTE_RADIUS - 10)
 
   ctx.globalAlpha = 1
 }
@@ -558,6 +644,7 @@ function render() {
         if (note.type === 'circle' && !processed.has(note.id)) {
           if (currentTime - note.time > 150) {
             gameStore.handleMiss(note.id)
+            playClickSound('miss')
             addJudgmentText('miss', note.x * canvasWidth, note.y * canvasHeight)
           }
         }
@@ -604,7 +691,12 @@ function handleClick(e: MouseEvent) {
     const nx = closestNote.x * canvasWidth
     const ny = closestNote.y * canvasHeight
 
-    // 点击波纹（无论是否命中都有反馈）
+    // 播放音效
+    if (result) {
+      playClickSound(result.type)
+    }
+
+    // 点击波纹
     const rippleColor = result ? COLORS.judgment[result.type] : 'rgba(255,255,255,0.5)'
     addClickRipple(nx, ny, rippleColor)
 
