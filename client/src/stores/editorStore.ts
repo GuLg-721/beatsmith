@@ -24,7 +24,7 @@ export const useEditorStore = defineStore('editor', () => {
   const selectedNoteId = ref<string | null>(null)
 
   // 当前选中的工具/音符类型
-  const activeTool = ref<'circle' | 'hold' | 'select'>('circle')
+  const activeTool = ref<'circle' | 'hold' | 'tap' | 'select'>('circle')
 
   // 吸附精度（毫秒）
   const snapDivisor = ref(4) // 1/4, 1/8, 1/16

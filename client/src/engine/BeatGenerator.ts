@@ -7,7 +7,7 @@ import type { Beat } from './BeatDetector'
 
 export interface Note {
   id: string
-  type: 'circle' | 'hold'
+  type: 'circle' | 'hold' | 'tap'
   time: number      // 毫秒
   x: number         // 0-1
   y: number         // 0-1
@@ -19,6 +19,7 @@ export type GenerateMode = 'simple' | 'advanced' | 'custom'
 export interface CustomOptions {
   density: number      // 0.2 - 1.0
   circleRatio: number  // 0-1
+  tapRatio: number     // 0-1
   holdRatio: number    // 0-1
 }
 
@@ -121,10 +122,12 @@ function generateCustom(beats: Beat[], options: CustomOptions): Note[] {
 
     // 根据比例随机选择类型
     const rand = Math.random()
-    let type: 'circle' | 'hold'
+    let type: 'circle' | 'tap' | 'hold'
 
     if (rand < options.circleRatio) {
       type = 'circle'
+    } else if (rand < options.circleRatio + options.tapRatio) {
+      type = 'tap'
     } else {
       type = 'hold'
     }
@@ -167,8 +170,9 @@ export function generateBeatmap(
     case 'custom':
       return generateCustom(beats, customOptions || {
         density: 0.5,
-        circleRatio: 0.6,
-        holdRatio: 0.4
+        circleRatio: 0.4,
+        tapRatio: 0.3,
+        holdRatio: 0.3
       })
     default:
       return generateSimple(beats)
