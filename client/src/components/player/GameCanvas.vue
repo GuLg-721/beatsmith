@@ -254,18 +254,9 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   const endY = Math.min(y + holdDuration * 0.2, y + availH, canvasHeight - margin)
   const endX = x + (x > canvasWidth / 2 ? -1 : 1) * 25
 
-  // 调试：记录 Hold 参数
-  if (isActive && holdDuration > 1000) {
-    const segCount = Math.max(3, Math.floor(Math.sqrt((endX - x) ** 2 + (endY - y) ** 2) / 80))
-    console.log('Hold render:', {
-      duration: Math.round(holdDuration),
-      startX: Math.round(x), startY: Math.round(y),
-      endX: Math.round(endX), endY: Math.round(endY),
-      segments: segCount,
-      progress: holdProgress.value,
-      isActive,
-      td: Math.round(td)
-    })
+  // 调试：记录 Hold 参数（减少日志量）
+  if (isActive && Math.random() < 0.05) { // 只记录 5% 的帧
+    console.log('Hold:', { dur: Math.round(holdDuration), x: Math.round(x), y: Math.round(y), ex: Math.round(endX), ey: Math.round(endY), prog: holdProgress.value.toFixed(2) })
   }
 
   let alpha = 1
@@ -301,6 +292,7 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   if (isActive || isCompleted) {
     const progress = isActive ? holdProgress.value : 1
 
+    try {
     // 分段弧形：将轨道分成多个短段，每段有轻微弧度
     const totalLen = Math.sqrt((endX - x) ** 2 + (endY - y) ** 2)
     const segmentCount = Math.max(3, Math.floor(totalLen / 80)) // 每 80px 一段
@@ -421,6 +413,18 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
     ctx.restore()
 
     ctx.globalAlpha = 1
+
+    } catch (e) {
+      // 渲染失败时的后备：绘制简单直线
+      console.error('Hold render error, using fallback:', e)
+      ctx.strokeStyle = COLORS.holdTrack
+      ctx.lineWidth = 26
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+      ctx.lineTo(x + (endX - x) * progress, y + (endY - y) * progress)
+      ctx.stroke()
+    }
   }
 }
 
