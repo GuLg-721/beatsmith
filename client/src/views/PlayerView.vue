@@ -114,11 +114,11 @@ function togglePause() {
       </div>
 
       <!-- 暂停遮罩 -->
-      <div v-if="gameStore.state === 'paused'" class="pause-overlay">
-        <div class="pause-card">
+      <div v-if="gameStore.state === 'paused'" class="pause-overlay" @click.stop>
+        <div class="pause-card" @click.stop>
           <h2>⏸ 暂停</h2>
-          <NButton type="primary" @click="togglePause()">继续</NButton>
-          <NButton @click="router.back()" style="margin-top: 0.5rem">退出</NButton>
+          <NButton type="primary" @click.stop="togglePause()">继续</NButton>
+          <NButton @click.stop="router.back()" style="margin-top: 0.5rem">退出</NButton>
         </div>
       </div>
     </template>
@@ -244,7 +244,7 @@ function togglePause() {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  z-index: 9999;
 }
 
 .pause-card {

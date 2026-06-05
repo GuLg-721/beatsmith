@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useGameStore } from '@/stores/gameStore'
 import { useAudioStore } from '@/stores/audioStore'
 import type { Note } from '@/engine/BeatGenerator'
@@ -12,9 +12,7 @@ let animFrameId: number | null = null
 
 const CANVAS_HEIGHT = 600
 const NOTE_RADIUS = 20
-const APPROACH_MAX = 3.0 // 判定圈最大缩放
 
-// 颜色
 const COLORS = {
   bg: '#0a0a14',
   circle: 'rgba(255, 100, 150, 0.9)',
@@ -31,33 +29,19 @@ const COLORS = {
   }
 }
 
-// 当前可点击的音符
-const clickableNotes = ref<Note[]>([])
-
 /**
- * 获取当前时间附近的音符
+ * 绘制 Circle 音符 + 判定圈动画
  */
-function getActiveNotes(currentTime: number): Note[] {
-  return gameStore.notes.filter(note => {
-    if (gameStore.state !== 'playing') return false
-    const timeDiff = note.time - currentTime
-    // 显示在判定范围内的音符（提前 2 秒显示）
-    return timeDiff > -200 && timeDiff < 2000
-  })
-}
-
-/**
- * 绘制 Circle 音符
- */
-function drawCircle(ctx: CanvasRenderingContext2D, note: Note, currentTime: number) {
-  const x = note.x * ctx.canvas.width
+function drawCircle(ctx: CanvasRenderingContext2D, note: Note, currentTime: number, canvasWidth: number) {
+  const x = note.x * canvasWidth
   const y = note.y * CANVAS_HEIGHT
-  const timeDiff = note.time - currentTime
+  const timeUntilHit = note.time - currentTime // 正数 = 还没到，负数 = 已过
 
-  // Approach circle（从大缩小）
-  const progress = 1 - (timeDiff / 1000) // 0→1 当时间到达时
-  if (progress >= 0 && progress <= 1) {
-    const scale = APPROACH_MAX - (APPROACH_MAX - 1) * progress
+  // Approach circle：从 3x 缩小到 1x，在命中前 1 秒开始缩小
+  const approachDuration = 1000 // 1 秒内缩小
+  if (timeUntilHit > 0 && timeUntilHit < approachDuration) {
+    const progress = 1 - (timeUntilHit / approachDuration) // 0→1
+    const scale = 3 - 2 * progress // 3→1
     ctx.strokeStyle = COLORS.approach
     ctx.lineWidth = 2
     ctx.beginPath()
@@ -73,24 +57,30 @@ function drawCircle(ctx: CanvasRenderingContext2D, note: Note, currentTime: numb
   ctx.arc(x, y, NOTE_RADIUS, 0, Math.PI * 2)
   ctx.fill()
   ctx.stroke()
+
+  // 未命中且已过期 → 变暗
+  if (timeUntilHit < -200) {
+    ctx.fillStyle = 'rgba(10, 10, 20, 0.7)'
+    ctx.beginPath()
+    ctx.arc(x, y, NOTE_RADIUS + 2, 0, Math.PI * 2)
+    ctx.fill()
+  }
 }
 
 /**
  * 绘制 Hold 音符
  */
-function drawHold(ctx: CanvasRenderingContext2D, note: Note, currentTime: number) {
+function drawHold(ctx: CanvasRenderingContext2D, note: Note, currentTime: number, canvasWidth: number) {
   if (!note.endTime) return
 
-  const x = note.x * ctx.canvas.width
+  const x = note.x * canvasWidth
   const y = note.y * CANVAS_HEIGHT
-  const endX = x // 简化：Hold 是垂直的
-  const endY = y + ((note.endTime - note.time) / 1000) * 50 // 根据时长计算长度
+  const endY = y + Math.min((note.endTime - note.time) / 10, 200) // 根据时长计算长度，最大 200px
 
   // Hold 条
   ctx.fillStyle = COLORS.hold
   ctx.strokeStyle = COLORS.holdBorder
   ctx.lineWidth = 2
-
   ctx.beginPath()
   ctx.roundRect(x - 8, y, 16, endY - y, 4)
   ctx.fill()
@@ -104,17 +94,17 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, currentTime: number
 
   // 终点圆
   ctx.beginPath()
-  ctx.arc(endX, endY, NOTE_RADIUS * 0.6, 0, Math.PI * 2)
+  ctx.arc(x, endY, NOTE_RADIUS * 0.6, 0, Math.PI * 2)
   ctx.fill()
 }
 
 /**
  * 绘制 Slide 音符
  */
-function drawSlide(ctx: CanvasRenderingContext2D, note: Note, currentTime: number) {
-  if (!note.controlPoints) return
+function drawSlide(ctx: CanvasRenderingContext2D, note: Note, canvasWidth: number) {
+  if (!note.controlPoints || note.controlPoints.length === 0) return
 
-  const x = note.x * ctx.canvas.width
+  const x = note.x * canvasWidth
   const y = note.y * CANVAS_HEIGHT
 
   ctx.strokeStyle = COLORS.slide
@@ -123,9 +113,8 @@ function drawSlide(ctx: CanvasRenderingContext2D, note: Note, currentTime: numbe
   ctx.moveTo(x, y)
 
   note.controlPoints.forEach(cp => {
-    ctx.lineTo(cp.x * ctx.canvas.width, cp.y * CANVAS_HEIGHT)
+    ctx.lineTo(cp.x * canvasWidth, cp.y * CANVAS_HEIGHT)
   })
-
   ctx.stroke()
 
   // 起点圆
@@ -138,64 +127,79 @@ function drawSlide(ctx: CanvasRenderingContext2D, note: Note, currentTime: numbe
 /**
  * 绘制判定反馈
  */
-function drawFeedbacks(ctx: CanvasRenderingContext2D) {
+function drawFeedbacks(ctx: CanvasRenderingContext2D, canvasWidth: number) {
+  const now = Date.now()
   gameStore.feedbacks.forEach(feedback => {
-    const age = (Date.now() - feedback.time) / 1000
+    const age = (now - feedback.time) / 1000
     if (age > 1) return
 
-    const x = feedback.x * ctx.canvas.width
-    const y = feedback.y * CANVAS_HEIGHT - age * 50 // 向上飘
+    const x = feedback.x * canvasWidth
+    const y = feedback.y * CANVAS_HEIGHT - age * 60
     const alpha = 1 - age
+    const scale = 1 + age * 0.3
 
-    ctx.font = 'bold 24px Inter, sans-serif'
+    ctx.save()
+    ctx.font = `bold ${24 * scale}px Inter, sans-serif`
     ctx.textAlign = 'center'
     ctx.fillStyle = COLORS.judgment[feedback.type]
     ctx.globalAlpha = alpha
     ctx.fillText(feedback.type.toUpperCase(), x, y)
-    ctx.globalAlpha = 1
+    ctx.restore()
   })
 }
 
 /**
- * 主渲染循环
+ * 主渲染循环 — 永远运行，不依赖 gameStore.state
  */
 function render() {
   const canvas = canvasRef.value
-  if (!canvas) return
+  if (!canvas) {
+    animFrameId = requestAnimationFrame(render)
+    return
+  }
 
   const ctx = canvas.getContext('2d')
-  if (!ctx) return
+  if (!ctx) {
+    animFrameId = requestAnimationFrame(render)
+    return
+  }
 
+  const canvasWidth = canvas.width
   const currentTime = audioStore.currentTime
 
   // 清空
   ctx.fillStyle = COLORS.bg
-  ctx.fillRect(0, 0, canvas.width, CANVAS_HEIGHT)
+  ctx.fillRect(0, 0, canvasWidth, CANVAS_HEIGHT)
 
-  if (gameStore.state === 'playing') {
-    // 绘制音符
-    const activeNotes = getActiveNotes(currentTime)
-    activeNotes.forEach(note => {
-      switch (note.type) {
-        case 'circle': drawCircle(ctx, note, currentTime); break
-        case 'hold': drawHold(ctx, note, currentTime); break
-        case 'slide': drawSlide(ctx, note, currentTime); break
+  // 始终绘制音符（即使暂停也显示最后一帧）
+  if (gameStore.notes.length > 0) {
+    gameStore.notes.forEach(note => {
+      const timeDiff = note.time - currentTime
+      // 显示范围：提前 2 秒到过期 500ms
+      if (timeDiff > -500 && timeDiff < 2000) {
+        switch (note.type) {
+          case 'circle': drawCircle(ctx, note, currentTime, canvasWidth); break
+          case 'hold': drawHold(ctx, note, currentTime, canvasWidth); break
+          case 'slide': drawSlide(ctx, note, canvasWidth); break
+        }
       }
     })
+  }
 
-    // 绘制反馈
-    drawFeedbacks(ctx)
+  // 绘制反馈
+  drawFeedbacks(ctx, canvasWidth)
 
-    // 检查 Miss（超时未击中的 Circle）
+  // 检查 Miss（播放中且超时未击中）
+  if (gameStore.state === 'playing') {
     gameStore.notes.forEach(note => {
       if (note.type === 'circle' && !gameStore.processedNotes.has(note.id)) {
-        if (currentTime - note.time > 100) {
+        if (currentTime - note.time > 150) {
           gameStore.handleMiss(note.id)
         }
       }
     })
 
-    // 检查游戏结束
+    // 游戏结束
     if (currentTime >= audioStore.duration && audioStore.duration > 0) {
       gameStore.endGame()
     }
@@ -229,9 +233,8 @@ function handleClick(e: MouseEvent) {
     const noteY = note.y * CANVAS_HEIGHT
     const dist = Math.sqrt((clickX - noteX) ** 2 + (clickY - noteY) ** 2)
 
-    // 只考虑在点击范围内的音符（200ms 内）
     const timeDiff = Math.abs(note.time - currentTime)
-    if (dist < NOTE_RADIUS + 30 && timeDiff < 200) {
+    if (dist < NOTE_RADIUS + 40 && timeDiff < 200) {
       if (dist < closestDist) {
         closestDist = dist
         closestNote = note
@@ -250,6 +253,7 @@ onMounted(() => {
     canvas.width = canvas.parentElement?.clientWidth || 800
     canvas.height = CANVAS_HEIGHT
   }
+  // 永远运行渲染循环
   render()
 })
 
