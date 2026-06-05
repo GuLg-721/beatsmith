@@ -251,8 +251,8 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   const holdDuration = note.endTime - note.time
   const margin = 40
   const availH = canvasHeight - y - margin
-  // 速度提高：每 100ms 约 8px
-  const endY = Math.min(y + holdDuration * 0.08, y + availH, canvasHeight - margin)
+  // 快节奏音游速度：每 100ms 约 15px
+  const endY = Math.min(y + holdDuration * 0.15, y + availH, canvasHeight - margin)
   const endX = x + (x > canvasWidth / 2 ? -1 : 1) * 25
 
   let alpha = 1
@@ -379,6 +379,9 @@ function render() {
   if (!canvas) { animFrameId = requestAnimationFrame(render); return }
   const ctx = canvas.getContext('2d')
   if (!ctx) { animFrameId = requestAnimationFrame(render); return }
+
+  // 先更新 Hold 进度（在同一帧内）
+  updateHoldProgress()
 
   canvasWidth = canvas.width; canvasHeight = canvas.height
   const ct = audioStore.currentTime
@@ -551,8 +554,7 @@ onMounted(() => {
       })
     })
   }
-  const loop = () => { updateHoldProgress(); requestAnimationFrame(loop) }; loop()
-  render()
+  render() // render 内部已经包含 updateHoldProgress
 })
 
 onUnmounted(() => {
