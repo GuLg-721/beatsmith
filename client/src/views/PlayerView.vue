@@ -92,16 +92,20 @@ function togglePause() {
         <!-- HUD -->
         <div class="hud">
           <div class="hud-left">
+            <div class="score-label">SCORE</div>
             <div class="score">{{ gameStore.score.toLocaleString() }}</div>
           </div>
           <div class="hud-center">
-            <div class="combo" v-if="gameStore.combo > 1">
-              {{ gameStore.combo }}x Combo
-            </div>
+            <Transition name="combo-pop">
+              <div class="combo" v-if="gameStore.combo > 1" :key="gameStore.combo">
+                {{ gameStore.combo }}
+                <span class="combo-label">COMBO</span>
+              </div>
+            </Transition>
           </div>
           <div class="hud-right">
             <div class="accuracy">{{ gameStore.accuracy.toFixed(1) }}%</div>
-            <div class="grade" :style="{ color: getGradeColor(gameStore.grade) }">
+            <div class="grade-badge" :style="{ color: getGradeColor(gameStore.grade), borderColor: getGradeColor(gameStore.grade) }">
               {{ gameStore.grade }}
             </div>
           </div>
@@ -187,34 +191,73 @@ function togglePause() {
 .hud {
   display: flex;
   justify-content: space-between;
-  padding: 1rem 2rem;
-  background: oklch(0 0 0 / 0.5);
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(180deg, oklch(0.06 0.01 280 / 0.9), oklch(0.06 0.01 280 / 0.3));
+  border-bottom: 1px solid oklch(0.62 0.22 350 / 0.1);
+}
+
+.hud-left, .hud-right {
+  min-width: 120px;
+}
+
+.hud-right {
+  text-align: right;
+}
+
+.score-label, .combo-label {
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  color: oklch(0.50 0.005 280);
 }
 
 .score {
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.combo {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: var(--primary);
+  text-align: center;
+  line-height: 1;
+  text-shadow: 0 0 20px oklch(0.62 0.22 350 / 0.5);
+}
+
+.combo-enter-active {
+  transition: all 0.15s ease-out;
+}
+.combo-leave-active {
+  transition: all 0.1s ease-in;
+}
+.combo-enter-from {
+  opacity: 0;
+  transform: scale(1.3);
+}
+.combo-leave-to {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+.accuracy {
+  font-size: 1.125rem;
+  font-weight: 600;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
 
-.combo {
+.grade-badge {
+  display: inline-block;
   font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--primary);
-  text-align: center;
-}
-
-.accuracy {
-  font-size: 1rem;
-  color: var(--muted);
-  text-align: right;
-}
-
-.grade {
-  font-size: 1.5rem;
   font-weight: 900;
-  text-align: right;
+  border: 2px solid;
+  border-radius: 6px;
+  padding: 0.125rem 0.5rem;
+  margin-top: 0.25rem;
 }
 
 .pause-btn {
