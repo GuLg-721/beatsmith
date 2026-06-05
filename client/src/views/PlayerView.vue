@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useGameStore } from '@/stores/gameStore'
 import { useAudioStore } from '@/stores/audioStore'
@@ -21,14 +21,14 @@ const mapId = computed(() => route.params.mapId as string)
 
 onMounted(async () => {
   try {
-    // 加载谱面数据
     const res = await api.get(`/api/maps/${mapId.value}`)
     mapData.value = res.data.map
 
-    // 加载音频
     await audioStore.loadAudioUrl(`/uploads/${mapData.value.audioFile}`)
 
-    // 解析谱面数据
+    // 设置默认音量 50%
+    audioStore.setVolume(0.5)
+
     let notes = []
     if (mapData.value.mapData) {
       try {
@@ -39,7 +39,6 @@ onMounted(async () => {
       }
     }
 
-    // 初始化游戏
     gameStore.initGame(mapId.value, notes)
     loading.value = false
   } catch (err) {
@@ -51,6 +50,16 @@ onMounted(async () => {
 function startGame() {
   gameStore.startGame()
   audioStore.play()
+}
+
+function togglePause() {
+  if (gameStore.state === 'playing') {
+    gameStore.pauseGame()
+    audioStore.pause()
+  } else if (gameStore.state === 'paused') {
+    gameStore.resumeGame()
+    audioStore.play()
+  }
 }
 </script>
 
@@ -77,40 +86,42 @@ function startGame() {
       </NButton>
     </div>
 
-    <!-- 游戏中 -->
-    <div v-else-if="gameStore.state === 'playing' || gameStore.state === 'paused'" class="game-area">
-      <!-- HUD -->
-      <div class="hud">
-        <div class="hud-left">
-          <div class="score">{{ gameStore.score.toLocaleString() }}</div>
-        </div>
-        <div class="hud-center">
-          <div class="combo" v-if="gameStore.combo > 1">
-            {{ gameStore.combo }}x Combo
+    <!-- 游戏中 + 暂停 -->
+    <template v-if="gameStore.state === 'playing' || gameStore.state === 'paused'">
+      <div class="game-area">
+        <!-- HUD -->
+        <div class="hud">
+          <div class="hud-left">
+            <div class="score">{{ gameStore.score.toLocaleString() }}</div>
+          </div>
+          <div class="hud-center">
+            <div class="combo" v-if="gameStore.combo > 1">
+              {{ gameStore.combo }}x Combo
+            </div>
+          </div>
+          <div class="hud-right">
+            <div class="accuracy">{{ gameStore.accuracy.toFixed(1) }}%</div>
+            <div class="grade" :style="{ color: getGradeColor(gameStore.grade) }">
+              {{ gameStore.grade }}
+            </div>
           </div>
         </div>
-        <div class="hud-right">
-          <div class="accuracy">{{ gameStore.accuracy.toFixed(1) }}%</div>
-          <div class="grade" :style="{ color: getGradeColor(gameStore.grade) }">
-            {{ gameStore.grade }}
-          </div>
+
+        <GameCanvas />
+
+        <!-- 暂停按钮 -->
+        <div class="pause-btn" @click="togglePause()">⏸</div>
+      </div>
+
+      <!-- 暂停遮罩 -->
+      <div v-if="gameStore.state === 'paused'" class="pause-overlay">
+        <div class="pause-card">
+          <h2>⏸ 暂停</h2>
+          <NButton type="primary" @click="togglePause()">继续</NButton>
+          <NButton @click="router.back()" style="margin-top: 0.5rem">退出</NButton>
         </div>
       </div>
-
-      <GameCanvas />
-
-      <!-- 暂停按钮 -->
-      <div class="pause-btn" @click="gameStore.pauseGame()">⏸</div>
-    </div>
-
-    <!-- 暂停界面 -->
-    <div v-else-if="gameStore.state === 'paused'" class="pause-overlay">
-      <div class="pause-card">
-        <h2>⏸ 暂停</h2>
-        <NButton type="primary" @click="gameStore.resumeGame(); audioStore.play()">继续</NButton>
-        <NButton @click="router.back()" style="margin-top: 0.5rem">退出</NButton>
-      </div>
-    </div>
+    </template>
 
     <!-- 结算画面 -->
     <ResultScreen v-if="gameStore.state === 'result'" />

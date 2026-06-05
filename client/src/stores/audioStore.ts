@@ -34,6 +34,7 @@ export const useAudioStore = defineStore('audio', () => {
     duration.value = engine.getDuration()
     fileName.value = file.name
     currentTime.value = 0
+    engine.setVolume(0.5) // 默认音量 50%
 
     // 节拍检测
     const pcmData = engine.getPCMData()
@@ -54,6 +55,7 @@ export const useAudioStore = defineStore('audio', () => {
     duration.value = engine.getDuration()
     fileName.value = url.split('/').pop() || ''
     currentTime.value = 0
+    engine.setVolume(0.5) // 默认音量 50%
 
     const pcmData = engine.getPCMData()
     if (pcmData && engine.audioContext) {
