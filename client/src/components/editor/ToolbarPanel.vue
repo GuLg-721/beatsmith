@@ -1,11 +1,19 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useEditorStore } from '@/stores/editorStore'
 import { useAudioStore } from '@/stores/audioStore'
-import { NButton } from 'naive-ui'
+import { NButton, NSlider } from 'naive-ui'
 import api from '@/utils/api'
 
 const editorStore = useEditorStore()
 const audioStore = useAudioStore()
+const volume = ref(80)
+const saving = ref(false)
+
+function handleVolumeChange(val: number) {
+  volume.value = val
+  audioStore.setVolume(val / 100)
+}
 
 function handleExport() {
   const json = editorStore.exportJSON()
@@ -19,14 +27,28 @@ function handleExport() {
 }
 
 async function handleSave() {
-  if (!editorStore.mapId) return
+  saving.value = true
   try {
-    await api.put(`/api/maps/${editorStore.mapId}`, {
-      mapData: editorStore.exportJSON()
-    })
+    if (editorStore.mapId) {
+      // 更新已有谱面
+      await api.put(`/api/maps/${editorStore.mapId}`, {
+        mapData: editorStore.exportJSON()
+      })
+    } else {
+      // 创建新谱面
+      const res = await api.post('/api/maps', {
+        title: audioStore.fileName.replace(/\.[^.]+$/, '') || '未命名歌曲',
+        audioFile: audioStore.fileName,
+        bpm: audioStore.estimatedBPM || null,
+        mapData: editorStore.exportJSON()
+      })
+      editorStore.mapId = res.data.id
+    }
     editorStore.isDirty = false
   } catch (err) {
     console.error('Save failed:', err)
+  } finally {
+    saving.value = false
   }
 }
 </script>
@@ -37,12 +59,29 @@ async function handleSave() {
       <router-link to="/songs" class="back-link">← 返回</router-link>
       <span class="title">⚒️ 编辑器</span>
     </div>
+
+    <div class="toolbar-center">
+      <div class="volume-control">
+        <span class="volume-icon">🔊</span>
+        <NSlider
+          :value="volume"
+          :min="0"
+          :max="100"
+          :step="5"
+          style="width: 100px"
+          @update:value="handleVolumeChange"
+        />
+      </div>
+    </div>
+
     <div class="toolbar-right">
       <NButton size="small" :disabled="!audioStore.isLoaded" @click="audioStore.isPlaying ? audioStore.pause() : audioStore.play()">
         {{ audioStore.isPlaying ? '⏸ 暂停' : '▶ 播放' }}
       </NButton>
-      <NButton size="small" :disabled="!editorStore.isDirty" @click="handleSave">💾 保存</NButton>
-      <NButton size="small" @click="handleExport">📤 导出JSON</NButton>
+      <NButton size="small" :loading="saving" :disabled="!audioStore.isLoaded" @click="handleSave">
+        💾 {{ editorStore.mapId ? '保存' : '另存为' }}
+      </NButton>
+      <NButton size="small" :disabled="!audioStore.isLoaded" @click="handleExport">📤 导出</NButton>
     </div>
   </div>
 </template>
@@ -77,6 +116,21 @@ async function handleSave() {
 .title {
   font-weight: 600;
   color: var(--ink);
+}
+
+.toolbar-center {
+  display: flex;
+  align-items: center;
+}
+
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.volume-icon {
+  font-size: 1rem;
 }
 
 .toolbar-right {
