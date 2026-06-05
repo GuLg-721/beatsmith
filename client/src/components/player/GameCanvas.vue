@@ -284,54 +284,128 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
     return
   }
 
-  // 激活或已完成：显示直线轨道（最稳定）
+  // 激活或已完成：显示分段弧形轨道
   if (isActive || isCompleted) {
     const progress = isActive ? holdProgress.value : 1
 
-    // 直线轨道：起点到终点
-    const getPoint = (t: number) => ({
-      x: x + (endX - x) * t,
-      y: y + (endY - y) * t
-    })
+    // 分段弧形：将轨道分成多个短段，每段有轻微弧度
+    const totalLen = Math.sqrt((endX - x) ** 2 + (endY - y) ** 2)
+    const segmentCount = Math.max(3, Math.floor(totalLen / 80)) // 每 80px 一段
+    const segmentLen = totalLen / segmentCount
 
-    // 轨道背景（宽条）
-    ctx.shadowColor = COLORS.hold; ctx.shadowBlur = 12
-    ctx.strokeStyle = COLORS.holdTrack; ctx.lineWidth = 26; ctx.lineCap = 'round'
-    ctx.beginPath(); ctx.moveTo(x, y)
-    for (let t = 0; t <= progress; t += 0.02) { const pt = getPoint(t); ctx.lineTo(pt.x, pt.y) }
-    ctx.stroke(); ctx.shadowBlur = 0
+    // 绘制轨道
+    ctx.save()
+    ctx.shadowColor = COLORS.hold
+    ctx.shadowBlur = 15
+    ctx.strokeStyle = COLORS.holdTrack
+    ctx.lineWidth = 28
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
 
-    // 轨道边线
-    ctx.strokeStyle = COLORS.hold; ctx.lineWidth = 2; ctx.globalAlpha = alpha * 0.6
-    ctx.beginPath(); ctx.moveTo(x, y)
-    for (let t = 0; t <= progress; t += 0.02) { const pt = getPoint(t); ctx.lineTo(pt.x, pt.y) }
-    ctx.stroke(); ctx.globalAlpha = alpha
+    ctx.beginPath()
+    ctx.moveTo(x, y)
 
-    // 流动点（恒定速度）
-    const flowSpeed = 0.003
-    const ft = Date.now() * flowSpeed
-    for (let i = 0; i < 5; i++) {
-      const t = ((ft + i * 0.2) % 1) * progress
-      const pt = getPoint(t)
-      ctx.fillStyle = `rgba(255, 255, 255, ${0.8 - i * 0.15})`
-      ctx.beginPath(); ctx.arc(pt.x, pt.y, 4 - i * 0.5, 0, Math.PI * 2); ctx.fill()
+    let drawnLen = 0
+    const targetLen = totalLen * progress
+
+    for (let i = 0; i < segmentCount; i++) {
+      const segStart = i * segmentLen
+      const segEnd = Math.min((i + 1) * segmentLen, targetLen)
+
+      if (segStart >= targetLen) break
+
+      // 每段的起点和终点
+      const sx = x + (endX - x) * (segStart / totalLen)
+      const sy = y + (endY - y) * (segStart / totalLen)
+      const ex = x + (endX - x) * (segEnd / totalLen)
+      const ey = y + (endY - y) * (segEnd / totalLen)
+
+      // 弧形控制点：交替向左和向右弯曲
+      const curveDir = (i % 2 === 0) ? 1 : -1
+      const curveAmt = Math.min(segmentLen * 0.3, 40) // 弧度
+      const mx = (sx + ex) / 2 + curveDir * curveAmt
+      const my = (sy + ey) / 2
+
+      // 绘制二次贝塞尔曲线段
+      ctx.quadraticCurveTo(mx, my, ex, ey)
     }
 
+    ctx.stroke()
+    ctx.shadowBlur = 0
+    ctx.restore()
+
+    // 流动点
+    ctx.save()
+    const flowSpeed = 0.003
+    const ft = Date.now() * flowSpeed
+    for (let i = 0; i < 6; i++) {
+      const t = ((ft + i * 0.17) % 1) * progress
+      // 计算流动点位置（沿分段路径）
+      const segIdx = Math.floor(t * segmentCount)
+      const segT = (t * segmentCount) - segIdx
+      const seg = Math.min(segIdx, segmentCount - 1)
+      const segStart = seg * segmentLen
+      const segEnd = Math.min((seg + 1) * segmentLen, totalLen)
+      const sx = x + (endX - x) * (segStart / totalLen)
+      const sy = y + (endY - y) * (segStart / totalLen)
+      const ex = x + (endX - x) * (segEnd / totalLen)
+      const ey = y + (endY - y) * (segEnd / totalLen)
+      const curveDir = (seg % 2 === 0) ? 1 : -1
+      const curveAmt = Math.min(segmentLen * 0.3, 40)
+      const mx = (sx + ex) / 2 + curveDir * curveAmt
+
+      const mt = 1 - segT
+      const px = mt * mt * sx + 2 * mt * segT * mx + segT * segT * ex
+      const py = mt * mt * sy + 2 * mt * segT * (sy + ey) / 2 + segT * segT * ey
+
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.9 - i * 0.12})`
+      ctx.beginPath()
+      ctx.arc(px, py, 4 - i * 0.4, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.restore()
+
     // 起点
+    ctx.save()
     const sg = ctx.createRadialGradient(x - 3, y - 3, 0, x, y, NOTE_RADIUS)
-    sg.addColorStop(0, '#fff8dc'); sg.addColorStop(0.7, COLORS.hold); sg.addColorStop(1, '#b8860b')
-    ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS, 0, Math.PI * 2); ctx.fill()
+    sg.addColorStop(0, '#fff8dc')
+    sg.addColorStop(0.7, COLORS.hold)
+    sg.addColorStop(1, '#b8860b')
+    ctx.fillStyle = sg
+    ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS, 0, Math.PI * 2); ctx.fill()
     ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.stroke()
+    ctx.restore()
 
     // 终点
-    const endPt = getPoint(1)
-    ctx.fillStyle = COLORS.hold; ctx.beginPath(); ctx.arc(endPt.x, endPt.y, 12, 0, Math.PI * 2); ctx.fill()
+    ctx.save()
+    const endPt = { x: endX, y: endY }
+    ctx.fillStyle = COLORS.hold
+    ctx.beginPath(); ctx.arc(endPt.x, endPt.y, 12, 0, Math.PI * 2); ctx.fill()
     ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.stroke()
+    ctx.restore()
 
-    // 进度指示
-    const progPt = getPoint(progress)
-    ctx.fillStyle = `rgba(255, 215, 0, 0.9)`
-    ctx.beginPath(); ctx.arc(progPt.x, progPt.y, 5, 0, Math.PI * 2); ctx.fill()
+    // 进度指示（沿路径）
+    ctx.save()
+    const progT = progress
+    const progSeg = Math.min(Math.floor(progT * segmentCount), segmentCount - 1)
+    const progSegT = (progT * segmentCount) - progSeg
+    const pSegStart = progSeg * segmentLen
+    const pSegEnd = Math.min((progSeg + 1) * segmentLen, totalLen)
+    const psx = x + (endX - x) * (pSegStart / totalLen)
+    const psy = y + (endY - y) * (pSegStart / totalLen)
+    const pex = x + (endX - x) * (pSegEnd / totalLen)
+    const pey = y + (endY - y) * (pSegEnd / totalLen)
+    const pCurveDir = (progSeg % 2 === 0) ? 1 : -1
+    const pCurveAmt = Math.min(segmentLen * 0.3, 40)
+    const pmx = (psx + pex) / 2 + pCurveDir * pCurveAmt
+    const pmt = 1 - progSegT
+    const ppx = pmt * pmt * psx + 2 * pmt * progSegT * pmx + progSegT * progSegT * pex
+    const ppy = pmt * pmt * psy + 2 * pmt * progSegT * (psy + pey) / 2 + progSegT * progSegT * pey
+
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.9)'
+    ctx.beginPath(); ctx.arc(ppx, ppy, 6, 0, Math.PI * 2); ctx.fill()
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; ctx.lineWidth = 2; ctx.stroke()
+    ctx.restore()
 
     ctx.globalAlpha = 1
   }
