@@ -17,7 +17,6 @@ const authStore = useAuthStore()
 
 const isLogin = ref(true)
 const errorMsg = ref('')
-const showForm = ref(true)
 
 const form = reactive({
   username: '',
@@ -74,18 +73,12 @@ async function handleSubmit() {
 }
 
 function toggleMode() {
-  // 先淡出
-  showForm.value = false
-  setTimeout(() => {
-    isLogin.value = !isLogin.value
-    errorMsg.value = ''
-    form.username = ''
-    form.nickname = ''
-    form.password = ''
-    form.confirmPassword = ''
-    // 再淡入
-    showForm.value = true
-  }, 150)
+  errorMsg.value = ''
+  form.username = ''
+  form.nickname = ''
+  form.password = ''
+  form.confirmPassword = ''
+  isLogin.value = !isLogin.value
 }
 </script>
 
@@ -102,37 +95,37 @@ function toggleMode() {
 
         <NAlert v-if="errorMsg" type="error" :title="errorMsg" closable @close="errorMsg = ''" class="error-alert" />
 
-        <div class="form-area" :class="{ 'form-hidden': !showForm }">
-          <NForm v-if="isLogin" ref="formRef" :model="form" :rules="rules" @submit.prevent="handleSubmit">
-            <NFormItem path="username" label="用户名">
-              <NInput v-model:value="form.username" placeholder="输入用户名" :disabled="authStore.loading" />
-            </NFormItem>
-            <NFormItem path="password" label="密码">
-              <NInput v-model:value="form.password" type="password" show-password-on="click" placeholder="输入密码" :disabled="authStore.loading" />
-            </NFormItem>
-            <NButton type="primary" block strong :loading="authStore.loading" :disabled="authStore.loading" class="submit-btn" @click="handleSubmit">
-              登录
-            </NButton>
-          </NForm>
+        <!-- Login Form -->
+        <NForm v-show="isLogin" ref="formRef" :model="form" :rules="rules" @submit.prevent="handleSubmit" class="auth-form">
+          <NFormItem path="username" label="用户名">
+            <NInput v-model:value="form.username" placeholder="输入用户名" :disabled="authStore.loading" />
+          </NFormItem>
+          <NFormItem path="password" label="密码">
+            <NInput v-model:value="form.password" type="password" show-password-on="click" placeholder="输入密码" :disabled="authStore.loading" />
+          </NFormItem>
+          <NButton type="primary" block strong :loading="authStore.loading" :disabled="authStore.loading" class="submit-btn" @click="handleSubmit">
+            登录
+          </NButton>
+        </NForm>
 
-          <NForm v-else ref="formRef" :model="form" :rules="rules" @submit.prevent="handleSubmit">
-            <NFormItem path="username" label="用户名">
-              <NInput v-model:value="form.username" placeholder="3-20 位，字母数字下划线" :disabled="authStore.loading" />
-            </NFormItem>
-            <NFormItem path="nickname" label="昵称（可选）">
-              <NInput v-model:value="form.nickname" placeholder="显示名称" :disabled="authStore.loading" />
-            </NFormItem>
-            <NFormItem path="password" label="密码">
-              <NInput v-model:value="form.password" type="password" show-password-on="click" placeholder="至少 8 位，字母+数字" :disabled="authStore.loading" />
-            </NFormItem>
-            <NFormItem path="confirmPassword" label="确认密码">
-              <NInput v-model:value="form.confirmPassword" type="password" show-password-on="click" placeholder="再次输入密码" :disabled="authStore.loading" />
-            </NFormItem>
-            <NButton type="primary" block strong :loading="authStore.loading" :disabled="authStore.loading" class="submit-btn" @click="handleSubmit">
-              注册
-            </NButton>
-          </NForm>
-        </div>
+        <!-- Register Form -->
+        <NForm v-show="!isLogin" :model="form" :rules="rules" @submit.prevent="handleSubmit" class="auth-form">
+          <NFormItem path="username" label="用户名">
+            <NInput v-model:value="form.username" placeholder="3-20 位，字母数字下划线" :disabled="authStore.loading" />
+          </NFormItem>
+          <NFormItem path="nickname" label="昵称（可选）">
+            <NInput v-model:value="form.nickname" placeholder="显示名称" :disabled="authStore.loading" />
+          </NFormItem>
+          <NFormItem path="password" label="密码">
+            <NInput v-model:value="form.password" type="password" show-password-on="click" placeholder="至少 8 位，字母+数字" :disabled="authStore.loading" />
+          </NFormItem>
+          <NFormItem path="confirmPassword" label="确认密码">
+            <NInput v-model:value="form.confirmPassword" type="password" show-password-on="click" placeholder="再次输入密码" :disabled="authStore.loading" />
+          </NFormItem>
+          <NButton type="primary" block strong :loading="authStore.loading" :disabled="authStore.loading" class="submit-btn" @click="handleSubmit">
+            注册
+          </NButton>
+        </NForm>
 
         <div class="toggle">
           <span class="toggle-text">{{ isLogin ? '没有账号？' : '已有账号？' }}</span>
@@ -203,14 +196,21 @@ function toggleMode() {
 
 .error-alert { margin-bottom: 1.5rem; }
 
-/* 表单淡入淡出 */
-.form-area {
-  opacity: 1;
-  transition: opacity 0.15s;
+/* 两个表单同时在 DOM 中，用 v-show 切换显示 */
+.auth-form {
+  /* 表单之间切换时的过渡 */
+  animation: formFade 0.25s ease;
 }
 
-.form-area.form-hidden {
-  opacity: 0;
+@keyframes formFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 :deep(.n-form-item-label__text) {
@@ -290,6 +290,6 @@ function toggleMode() {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .form-area { transition: none; }
+  .auth-form { animation: none; }
 }
 </style>
