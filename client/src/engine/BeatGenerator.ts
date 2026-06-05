@@ -54,16 +54,28 @@ function randomPosition(existingNotes: Note[], canvasHeight: number): { x: numbe
 }
 
 /**
- * 简单模式：每个节拍一个 Circle
+ * 简单模式：Tap 连续出现为主，少量 Circle
  */
 function generateSimple(beats: Beat[]): Note[] {
   const notes: Note[] = []
+  let tapCluster = 0
 
-  beats.forEach(beat => {
+  beats.forEach((beat, i) => {
     const pos = randomPosition(notes, 1)
+
+    let type: 'circle' | 'tap' = 'tap'
+    if (tapCluster > 0 && tapCluster < 6 && Math.random() < 0.7) {
+      tapCluster++
+    } else if (tapCluster >= 6 || Math.random() < 0.3) {
+      type = 'circle'
+      tapCluster = 0
+    } else {
+      tapCluster++
+    }
+
     notes.push({
       id: nanoid(8),
-      type: 'circle',
+      type,
       time: beat.time,
       x: pos.x,
       y: pos.y
@@ -98,8 +110,10 @@ function generateAdvanced(beats: Beat[], bpm: number): Note[] {
         y: pos.y
       })
     } else if (i % 4 === 2) {
-      // 弱拍：Hold（持续半拍）
-      lastHoldEnd = beat.time + intervalMs / 2
+      // 弱拍：Hold（随机时长：1/4 到 1 拍）
+      const holdMult = [0.25, 0.5, 0.75, 1.0][Math.floor(Math.random() * 4)]
+      const holdDur = intervalMs * holdMult
+      lastHoldEnd = beat.time + holdDur
       notes.push({
         id: nanoid(8),
         type: 'hold',

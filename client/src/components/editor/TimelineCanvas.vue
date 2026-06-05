@@ -280,17 +280,17 @@ function handleMouseDown(e: MouseEvent) {
     const yNorm = yToNorm(y)
 
     if (editorStore.activeTool !== 'select') {
-      console.log('Placing note with tool:', editorStore.activeTool)
+      const noteType = editorStore.activeTool as 'circle' | 'tap' | 'hold'
       const newNote: Note = {
         id: nanoid(8),
-        type: editorStore.activeTool as 'circle' | 'tap' | 'hold',
+        type: noteType,
         time,
         x: 0.5 + (Math.random() - 0.5) * 0.3,
-        y: yNorm
+        y: yNorm,
+        // Hold 音符默认持续 500ms
+        ...(noteType === 'hold' ? { endTime: time + 500 } : {})
       }
-      console.log('New note:', newNote)
       editorStore.addNote(newNote)
-      console.log('Notes count:', editorStore.notes.length)
     }
   }
 }

@@ -244,12 +244,22 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   if (td < -500) return
 
   const holdDuration = note.endTime - note.time
-  const MIN_TRACK_LENGTH = 150 // 最小轨道长度
-  const rawEndY = y + Math.max(Math.min(holdDuration / 5, 350), MIN_TRACK_LENGTH)
+  // 轨道长度与持续时间成正比（恒定速度：每 100ms 约 60px）
+  const PIXELS_PER_MS = 0.06
+  const rawTrackLen = holdDuration * PIXELS_PER_MS
+  const MIN_TRACK = 120
+  const MAX_TRACK = Math.min(canvasHeight * 0.7, 500)
+  const trackLen = Math.max(MIN_TRACK, Math.min(rawTrackLen, MAX_TRACK))
 
-  // 边界控制：终点不超出视口
+  // 根据轨道长度计算终点（主要向下，微调方向）
+  const angle = (Math.random() > 0.5 ? 1 : -1) * 0.2 // 轻微偏移
+  const endX = x + Math.sin(angle) * trackLen * 0.15
+  const endY = y + Math.cos(angle) * trackLen
+
+  // 边界控制
   const margin = 60
-  const endY = Math.min(rawEndY, canvasHeight - margin)
+  const clampedEndY = Math.min(Math.max(endY, margin), canvasHeight - margin)
+  const clampedEndX = Math.min(Math.max(endX, margin), canvasWidth - margin)
 
   let alpha = 1
   if (td > 1200) alpha = Math.max(0, 1 - (td - 1200) / 600)
@@ -287,36 +297,61 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   if (isActive || isCompleted) {
     const progress = isActive ? holdProgress.value : 1
 
-    // 单向向下弯曲的弧形控制点
-    const midY = (y + endY) / 2
-    const curveOffset = 40 + (endY - y) * 0.1 // 弧度随长度增加
-    const curveX = x + curveOffset
-    const curveY = midY
+    // 多种随机贝塞尔曲线形态
+    const curveSeed = Math.abs(note.id.charCodeAt(0) + note.id.charCodeAt(1)) % 5
+    let curveX: number, curveY: number
+
+    switch (curveSeed) {
+      case 0: // S 形曲线
+        curveX = x + (clampedEndX - x) * 0.6 + 50
+        curveY = y + (clampedEndY - y) * 0.3
+        break
+      case 1: // 反 S 形
+        curveX = x + (clampedEndX - x) * 0.4 - 50
+        curveY = y + (clampedEndY - y) * 0.7
+        break
+      case 2: // 大弧形
+        curveX = x + (clampedEndX - x) * 0.5 + 80
+        curveY = y + (clampedEndY - y) * 0.5 - 30
+        break
+      case 3: // 小弧形
+        curveX = x + (clampedEndX - x) * 0.5 - 40
+        curveY = y + (clampedEndY - y) * 0.5 + 20
+        break
+      default: // 微弧
+        curveX = x + (clampedEndX - x) * 0.5 + 20
+        curveY = y + (clampedEndY - y) * 0.5
+    }
 
     const getPoint = (t: number) => {
       const mt = 1 - t
-      return { x: mt * mt * x + 2 * mt * t * curveX + t * t * x, y: mt * mt * y + 2 * mt * t * curveY + t * t * endY }
+      return {
+        x: mt * mt * x + 2 * mt * t * curveX + t * t * clampedEndX,
+        y: mt * mt * y + 2 * mt * t * curveY + t * t * clampedEndY
+      }
     }
 
-    // 轨道
+    // 轨道背景
     ctx.shadowColor = COLORS.hold; ctx.shadowBlur = 15
     ctx.strokeStyle = COLORS.holdTrack; ctx.lineWidth = 28; ctx.lineCap = 'round'
     ctx.beginPath(); ctx.moveTo(x, y)
     for (let t = 0; t <= progress; t += 0.02) { const pt = getPoint(t); ctx.lineTo(pt.x, pt.y) }
     ctx.stroke(); ctx.shadowBlur = 0
 
+    // 轨道边线
     ctx.strokeStyle = COLORS.hold; ctx.lineWidth = 2; ctx.globalAlpha = alpha * 0.6
     ctx.beginPath(); ctx.moveTo(x, y)
     for (let t = 0; t <= progress; t += 0.02) { const pt = getPoint(t); ctx.lineTo(pt.x, pt.y) }
     ctx.stroke(); ctx.globalAlpha = alpha
 
-    // 流动点
-    const ft = Date.now() * 0.003
-    for (let i = 0; i < 4; i++) {
-      const t = ((ft + i * 0.25) % 1) * progress
+    // 流动点（恒定速度）
+    const flowSpeed = 0.002 // 恒定速度
+    const ft = Date.now() * flowSpeed
+    for (let i = 0; i < 5; i++) {
+      const t = ((ft + i * 0.2) % 1) * progress
       const pt = getPoint(t)
-      ctx.fillStyle = `rgba(255, 255, 255, ${0.7 - i * 0.15})`
-      ctx.beginPath(); ctx.arc(pt.x, pt.y, 3.5 - i * 0.5, 0, Math.PI * 2); ctx.fill()
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.8 - i * 0.15})`
+      ctx.beginPath(); ctx.arc(pt.x, pt.y, 4 - i * 0.5, 0, Math.PI * 2); ctx.fill()
     }
 
     // 起点
@@ -327,12 +362,12 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
 
     // 终点
     const endPt = getPoint(1)
-    ctx.fillStyle = COLORS.hold; ctx.beginPath(); ctx.arc(endPt.x, endPt.y, 10, 0, Math.PI * 2); ctx.fill()
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1.5; ctx.stroke()
+    ctx.fillStyle = COLORS.hold; ctx.beginPath(); ctx.arc(endPt.x, endPt.y, 12, 0, Math.PI * 2); ctx.fill()
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.stroke()
 
     // 进度指示
     const progPt = getPoint(progress)
-    ctx.fillStyle = `rgba(255, 215, 0, 0.8)`
+    ctx.fillStyle = `rgba(255, 215, 0, 0.9)`
     ctx.beginPath(); ctx.arc(progPt.x, progPt.y, 5, 0, Math.PI * 2); ctx.fill()
 
     ctx.globalAlpha = 1
