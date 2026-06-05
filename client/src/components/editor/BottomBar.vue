@@ -11,8 +11,7 @@ const showGenerateModal = ref(false)
 const generateMode = ref<'simple' | 'advanced' | 'custom'>('simple')
 const customDensity = ref(0.5)
 const customCircle = ref(0.6)
-const customHold = ref(0.3)
-const customSlide = ref(0.1)
+const customHold = ref(0.4)
 
 const snapOptions = [
   { label: '1/4', value: 4 },
@@ -21,9 +20,8 @@ const snapOptions = [
 ]
 
 const toolOptions = [
-  { label: '🔘 Circle', value: 'circle' },
-  { label: '📏 Hold', value: 'hold' },
-  { label: '〰️ Slide', value: 'slide' },
+  { label: '🔴 Circle', value: 'circle' },
+  { label: '🟡 Hold', value: 'hold' },
   { label: '👆 选择', value: 'select' },
 ]
 
@@ -38,7 +36,6 @@ function handleGenerate() {
       density: customDensity.value,
       circleRatio: customCircle.value,
       holdRatio: customHold.value,
-      slideRatio: customSlide.value,
     } : undefined
   )
 
@@ -130,8 +127,6 @@ function handleGenerate() {
           <label>Hold: {{ (customHold * 100).toFixed(0) }}%</label>
           <input type="range" v-model.number="customHold" min="0" max="1" step="0.1" />
 
-          <label>Slide: {{ (customSlide * 100).toFixed(0) }}%</label>
-          <input type="range" v-model.number="customSlide" min="0" max="1" step="0.1" />
         </div>
 
         <div class="modal-actions">

@@ -160,6 +160,26 @@ function drawCircle(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
     ctx.strokeStyle = COLORS.approach; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS * sc, 0, Math.PI * 2); ctx.stroke()
   }
 
+  // Perfect 时刻提示：判定圈匹配时高亮闪烁
+  const isPerfectWindow = td >= -20 && td <= 20
+  if (isPerfectWindow && !gameStore.processedNotes?.has(note.id)) {
+    const flash = Math.sin(Date.now() * 0.03) * 0.5 + 0.5
+    // 外层金色光圈
+    ctx.strokeStyle = `rgba(255, 215, 0, ${0.6 + flash * 0.4})`
+    ctx.lineWidth = 3
+    ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS + 8 + flash * 5, 0, Math.PI * 2); ctx.stroke()
+    // 内层白色闪烁
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + flash * 0.5})`
+    ctx.lineWidth = 2
+    ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS + 4, 0, Math.PI * 2); ctx.stroke()
+    // 音符本身发光增强
+    ctx.shadowColor = '#ffd700'
+    ctx.shadowBlur = 20 + flash * 15
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.15)'
+    ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS + 15, 0, Math.PI * 2); ctx.fill()
+    ctx.shadowBlur = 0
+  }
+
   // 音符
   const ng = ctx.createRadialGradient(x - 5, y - 5, 0, x, y, NOTE_RADIUS)
   ng.addColorStop(0, '#ffb3cc'); ng.addColorStop(0.7, COLORS.circle); ng.addColorStop(1, '#cc3060')
@@ -205,6 +225,19 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
       ctx.strokeStyle = COLORS.approach; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(startX, startY, NOTE_RADIUS * sc, 0, Math.PI * 2); ctx.stroke()
     }
 
+    // Perfect 时刻提示
+    const isPerfectWindow = td >= -20 && td <= 20
+    if (isPerfectWindow) {
+      const flash = Math.sin(Date.now() * 0.03) * 0.5 + 0.5
+      ctx.strokeStyle = `rgba(255, 215, 0, ${0.6 + flash * 0.4})`
+      ctx.lineWidth = 3
+      ctx.beginPath(); ctx.arc(startX, startY, NOTE_RADIUS + 8 + flash * 5, 0, Math.PI * 2); ctx.stroke()
+      ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 20 + flash * 15
+      ctx.fillStyle = 'rgba(255, 215, 0, 0.15)'
+      ctx.beginPath(); ctx.arc(startX, startY, NOTE_RADIUS + 15, 0, Math.PI * 2); ctx.fill()
+      ctx.shadowBlur = 0
+    }
+
     // 发光
     const gp = Math.sin(Date.now() * 0.004) * 0.15 + 0.85
     ctx.fillStyle = `rgba(255, 215, 0, ${0.3 * gp})`; ctx.beginPath(); ctx.arc(startX, startY, NOTE_RADIUS + 12, 0, Math.PI * 2); ctx.fill()
@@ -223,29 +256,77 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
     return
   }
 
-  // 激活或已完成时：显示轨道
+  // 激活或已完成时：显示弧形轨道
   if (isActive || isCompleted) {
     const progress = isActive ? holdProgress.value : 1
-    const currentEndY = startY + (endY - startY) * progress
 
-    // 轨道背景
+    // 计算终点位置（带边界控制）
+    let rawEndY = startY + Math.min(holdDuration / 5, 350)
+    // 如果终点超出屏幕底部，向上弯曲
+    const margin = 60
+    if (rawEndY > canvasHeight - margin) {
+      rawEndY = canvasHeight - margin
+    }
+    // 如果终点超出屏幕顶部，向下弯曲
+    if (rawEndY < margin) {
+      rawEndY = margin
+    }
+
+    // 弧形控制点（根据起点和终点位置自动计算）
+    const midY = (startY + rawEndY) / 2
+    // 根据位置决定弯曲方向
+    let curveX: number, curveY: number
+    if (startY > canvasHeight * 0.6) {
+      // 起点在下方，轨道向上弯曲
+      curveX = startX + (startX > canvasWidth / 2 ? -80 : 80)
+      curveY = midY - 60
+    } else if (rawEndY > canvasHeight * 0.7) {
+      // 终点在下方，轨道向上弯曲
+      curveX = startX + (startX > canvasWidth / 2 ? -60 : 60)
+      curveY = midY - 40
+    } else {
+      // 正常情况，轻微弧形
+      curveX = startX + (Math.random() > 0.5 ? 1 : -1) * 30
+      curveY = midY
+    }
+
+    // 贝塞尔曲线路径
+    const getPointOnCurve = (t: number) => {
+      const mt = 1 - t
+      return {
+        x: mt * mt * startX + 2 * mt * t * curveX + t * t * startX,
+        y: mt * mt * startY + 2 * mt * t * curveY + t * t * rawEndY
+      }
+    }
+
+    // 绘制弧形轨道（宽条）
     ctx.shadowColor = COLORS.hold; ctx.shadowBlur = 15
     ctx.strokeStyle = COLORS.holdTrack; ctx.lineWidth = 28; ctx.lineCap = 'round'
-    ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(startX, currentEndY); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(startX, startY)
+    for (let t = 0; t <= progress; t += 0.02) {
+      const pt = getPointOnCurve(t)
+      ctx.lineTo(pt.x, pt.y)
+    }
+    ctx.stroke()
     ctx.shadowBlur = 0
 
     // 轨道边线
     ctx.strokeStyle = COLORS.hold; ctx.lineWidth = 2; ctx.globalAlpha = alpha * 0.6
-    ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(startX, currentEndY); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(startX, startY)
+    for (let t = 0; t <= progress; t += 0.02) {
+      const pt = getPointOnCurve(t)
+      ctx.lineTo(pt.x, pt.y)
+    }
+    ctx.stroke()
     ctx.globalAlpha = alpha
 
     // 流动发光点
     const ft = Date.now() * 0.003
-    for (let i = 0; i < 3; i++) {
-      const t = (ft + i * 0.33) % 1
-      const py = startY + (currentEndY - startY) * t
-      ctx.fillStyle = `rgba(255, 255, 255, ${0.6 - i * 0.15})`
-      ctx.beginPath(); ctx.arc(startX, py, 3 - i * 0.5, 0, Math.PI * 2); ctx.fill()
+    for (let i = 0; i < 4; i++) {
+      const t = ((ft + i * 0.25) % 1) * progress
+      const pt = getPointOnCurve(t)
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.7 - i * 0.15})`
+      ctx.beginPath(); ctx.arc(pt.x, pt.y, 3.5 - i * 0.5, 0, Math.PI * 2); ctx.fill()
     }
 
     // 起点圆
@@ -255,12 +336,14 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
     ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.stroke()
 
     // 终点圆
-    ctx.fillStyle = COLORS.hold; ctx.beginPath(); ctx.arc(startX, endY, 10, 0, Math.PI * 2); ctx.fill()
+    const endPt = getPointOnCurve(1)
+    ctx.fillStyle = COLORS.hold; ctx.beginPath(); ctx.arc(endPt.x, endPt.y, 10, 0, Math.PI * 2); ctx.fill()
     ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1.5; ctx.stroke()
 
-    // 进度条
+    // 进度条（沿弧形）
     ctx.fillStyle = `rgba(255, 215, 0, 0.8)`
-    ctx.fillRect(startX + 20, startY, 4, (endY - startY) * progress)
+    const progPt = getPointOnCurve(progress)
+    ctx.beginPath(); ctx.arc(progPt.x, progPt.y, 4, 0, Math.PI * 2); ctx.fill()
 
     ctx.globalAlpha = 1
   }
