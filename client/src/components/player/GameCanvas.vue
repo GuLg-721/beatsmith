@@ -284,24 +284,19 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
     return
   }
 
-  // 激活或已完成：显示弧形轨道
+  // 激活或已完成：显示直线轨道（最稳定）
   if (isActive || isCompleted) {
     const progress = isActive ? holdProgress.value : 1
 
-    const midX = (x + endX) / 2 + 15
-    const midY = (y + endY) / 2
+    // 直线轨道：起点到终点
+    const getPoint = (t: number) => ({
+      x: x + (endX - x) * t,
+      y: y + (endY - y) * t
+    })
 
-    const getPoint = (t: number) => {
-      const mt = 1 - t
-      return {
-        x: mt * mt * x + 2 * mt * t * midX + t * t * endX,
-        y: mt * mt * y + 2 * mt * t * midY + t * t * endY
-      }
-    }
-
-    // 轨道背景
-    ctx.shadowColor = COLORS.hold; ctx.shadowBlur = 15
-    ctx.strokeStyle = COLORS.holdTrack; ctx.lineWidth = 28; ctx.lineCap = 'round'
+    // 轨道背景（宽条）
+    ctx.shadowColor = COLORS.hold; ctx.shadowBlur = 12
+    ctx.strokeStyle = COLORS.holdTrack; ctx.lineWidth = 26; ctx.lineCap = 'round'
     ctx.beginPath(); ctx.moveTo(x, y)
     for (let t = 0; t <= progress; t += 0.02) { const pt = getPoint(t); ctx.lineTo(pt.x, pt.y) }
     ctx.stroke(); ctx.shadowBlur = 0
@@ -313,7 +308,7 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
     ctx.stroke(); ctx.globalAlpha = alpha
 
     // 流动点（恒定速度）
-    const flowSpeed = 0.002 // 恒定速度
+    const flowSpeed = 0.003
     const ft = Date.now() * flowSpeed
     for (let i = 0; i < 5; i++) {
       const t = ((ft + i * 0.2) % 1) * progress
