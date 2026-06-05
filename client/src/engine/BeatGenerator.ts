@@ -20,7 +20,7 @@ export interface CustomOptions {
   density: number
   circleRatio: number
   tapRatio: number
-  holdRatio: number
+  spinnerRatio: number
 }
 
 const MIN_DISTANCE = 0.08
@@ -75,7 +75,7 @@ function analyzeBeats(beats: Beat[], dur: number): Map<number, 'high' | 'low' | 
   return map
 }
 
-// 检测空窗期并填充 Hold
+// 检测空窗期并填充 Spinner
 function fillGaps(notes: Note[], beats: Beat[], bpm: number) {
   if (notes.length < 2) return
   const intervalMs = 60000 / bpm
@@ -87,16 +87,16 @@ function fillGaps(notes: Note[], beats: Beat[], bpm: number) {
   for (let i = 0; i < sorted.length - 1; i++) {
     const gap = sorted[i + 1].time - sorted[i].time
     if (gap > gapThreshold) {
-      // 在空窗中间添加一个 Hold
+      // 在空窗中间添加一个 Spinner
       const midTime = sorted[i].time + gap * 0.5
-      const holdDur = Math.min(gap * 0.6, intervalMs * 2)
+      const spinnerDur = Math.min(gap * 0.6, intervalMs * 2)
       filled.push({
         id: nanoid(8),
         type: 'spinner',
         time: midTime,
         x: 0.1 + Math.random() * 0.8,
         y: 0.1 + Math.random() * 0.8,
-        endTime: midTime + holdDur
+        endTime: midTime + spinnerDur
       })
     }
   }
@@ -107,21 +107,21 @@ function fillGaps(notes: Note[], beats: Beat[], bpm: number) {
 }
 
 /**
- * 简单模式：Circle 50% / Tap 35% / Hold 15%
+ * 简单模式：Circle 50% / Tap 35% / Spinner 15%
  */
 function generateSimple(beats: Beat[], dur: number, bpm: number): Note[] {
   const notes: Note[] = []
   const energyMap = analyzeBeats(beats, dur)
-  let tapCluster = 0, lastHoldEnd = 0
+  let tapCluster = 0, lastSpinnerEnd = 0
   const intervalMs = 60000 / bpm
   const targetTap = Math.floor(beats.length * 0.35)
-  const targetHold = Math.floor(beats.length * 0.15)
-  let tapCount = 0, holdCount = 0
+  const targetSpinner = Math.floor(beats.length * 0.15)
+  let tapCount = 0, spinnerCount = 0
   const endingStart = dur * 0.85 // 结尾段起点
 
   for (let i = 0; i < beats.length; i++) {
     const beat = beats[i]
-    if (beat.time < lastHoldEnd) continue
+    if (beat.time < lastSpinnerEnd) continue
 
     // 结尾段：Tap 穿插，不生成 Circle
     if (beat.time >= endingStart) {
@@ -137,18 +137,18 @@ function generateSimple(beats: Beat[], dur: number, bpm: number): Note[] {
 
     const energy = energyMap.get(i) || 'low'
     const pos = randomPos(notes)
-    let type: 'circle' | 'tap' | 'hold'
+    let type: 'circle' | 'tap' | 'spinner'
 
     if (energy === 'high' && tapCount < targetTap) {
       type = 'tap'
       tapCluster++
       tapCount++
       if (tapCluster >= 8) { type = 'circle'; tapCluster = 0 }
-    } else if (energy === 'trans' && holdCount < targetHold) {
-      type = 'hold'
+    } else if (energy === 'trans' && spinnerCount < targetSpinner) {
+      type = 'spinner'
       tapCluster = 0
-      holdCount++
-      lastHoldEnd = beat.time + intervalMs * [0.5, 0.75, 1.0][Math.floor(Math.random() * 3)]
+      spinnerCount++
+      lastSpinnerEnd = beat.time + intervalMs * [0.5, 0.75, 1.0][Math.floor(Math.random() * 3)]
     } else if (tapCount < targetTap && Math.random() < 0.4) {
       type = 'tap'
       tapCluster++
@@ -165,36 +165,36 @@ function generateSimple(beats: Beat[], dur: number, bpm: number): Note[] {
     }
 
     const note: Note = { id: nanoid(8), type, time: beat.time, x: pos.x, y: pos.y }
-    if (type === 'hold') note.endTime = lastHoldEnd
+    if (type === 'spinner') note.endTime = lastSpinnerEnd
     notes.push(note)
   }
 
   // 填充空窗期
   fillGaps(notes, beats, bpm)
 
-  // 结尾：一个至少 5 秒的长 Hold
-  addLongEndingHold(notes, beats, dur)
+  // 结尾：一个至少 5 秒的长 Spinner
+  addLongEndingSpinner(notes, beats, dur)
 
   logCounts('generateSimple', notes)
   return notes
 }
 
 /**
- * 进阶模式：高潮多 Tap / Circle 55% / Tap 30% / Hold 15%
+ * 进阶模式：高潮多 Tap / Circle 55% / Tap 30% / Spinner 15%
  */
 function generateAdvanced(beats: Beat[], dur: number, bpm: number): Note[] {
   const notes: Note[] = []
   const energyMap = analyzeBeats(beats, dur)
-  let tapCluster = 0, lastHoldEnd = 0
+  let tapCluster = 0, lastSpinnerEnd = 0
   const intervalMs = 60000 / bpm
   const targetTap = Math.floor(beats.length * 0.30)
-  const targetHold = Math.floor(beats.length * 0.15)
-  let tapCount = 0, holdCount = 0
+  const targetSpinner = Math.floor(beats.length * 0.15)
+  let tapCount = 0, spinnerCount = 0
   const endingStart = dur * 0.85
 
   for (let i = 0; i < beats.length; i++) {
     const beat = beats[i]
-    if (beat.time < lastHoldEnd) continue
+    if (beat.time < lastSpinnerEnd) continue
 
     if (beat.time >= endingStart) {
       const note: Note = {
@@ -209,18 +209,18 @@ function generateAdvanced(beats: Beat[], dur: number, bpm: number): Note[] {
 
     const energy = energyMap.get(i) || 'low'
     const pos = randomPos(notes)
-    let type: 'circle' | 'tap' | 'hold'
+    let type: 'circle' | 'tap' | 'spinner'
 
     if (energy === 'high' && tapCount < targetTap) {
       type = 'tap'
       tapCluster++
       tapCount++
       if (tapCluster >= 6) { type = 'circle'; tapCluster = 0 }
-    } else if (energy === 'trans' && holdCount < targetHold) {
-      type = 'hold'
+    } else if (energy === 'trans' && spinnerCount < targetSpinner) {
+      type = 'spinner'
       tapCluster = 0
-      holdCount++
-      lastHoldEnd = beat.time + intervalMs * [0.5, 0.75, 1.0, 1.5][Math.floor(Math.random() * 4)]
+      spinnerCount++
+      lastSpinnerEnd = beat.time + intervalMs * [0.5, 0.75, 1.0, 1.5][Math.floor(Math.random() * 4)]
     } else {
       type = 'circle'
       tapCluster = 0
@@ -232,12 +232,12 @@ function generateAdvanced(beats: Beat[], dur: number, bpm: number): Note[] {
     }
 
     const note: Note = { id: nanoid(8), type, time: beat.time, x: pos.x, y: pos.y }
-    if (type === 'hold') note.endTime = lastHoldEnd
+    if (type === 'spinner') note.endTime = lastSpinnerEnd
     notes.push(note)
   }
 
   fillGaps(notes, beats, bpm)
-  addLongEndingHold(notes, beats, dur)
+  addLongEndingSpinner(notes, beats, dur)
   logCounts('generateAdvanced', notes)
   return notes
 }
@@ -247,14 +247,14 @@ function generateAdvanced(beats: Beat[], dur: number, bpm: number): Note[] {
  */
 function generateCustom(beats: Beat[], dur: number, options: CustomOptions): Note[] {
   const notes: Note[] = []
-  let lastHoldEnd = 0
+  let lastSpinnerEnd = 0
   const total = Math.floor(beats.length * options.density)
   const step = Math.max(1, Math.floor(beats.length / total))
   const endingStart = dur * 0.85
 
   for (let i = 0; i < beats.length; i += step) {
     const beat = beats[i]
-    if (beat.time < lastHoldEnd) continue
+    if (beat.time < lastSpinnerEnd) continue
 
     if (beat.time >= endingStart) {
       const note: Note = {
@@ -269,30 +269,30 @@ function generateCustom(beats: Beat[], dur: number, options: CustomOptions): Not
 
     const pos = randomPos(notes)
     const r = Math.random()
-    let type: 'circle' | 'tap' | 'hold'
+    let type: 'circle' | 'tap' | 'spinner'
 
     if (r < options.circleRatio) type = 'circle'
     else if (r < options.circleRatio + options.tapRatio) type = 'tap'
     else {
-      type = 'hold'
-      lastHoldEnd = beat.time + 500 + Math.random() * 1500
+      type = 'spinner'
+      lastSpinnerEnd = beat.time + 500 + Math.random() * 1500
     }
 
     if (type === 'circle' && tooFarFromCircle(notes, pos.x, pos.y)) type = 'tap'
 
     const note: Note = { id: nanoid(8), type, time: beat.time, x: pos.x, y: pos.y }
-    if (type === 'hold') note.endTime = lastHoldEnd
+    if (type === 'spinner') note.endTime = lastSpinnerEnd
     notes.push(note)
   }
 
   fillGaps(notes, beats, 120) // 默认 120 BPM
-  addLongEndingHold(notes, beats, dur)
+  addLongEndingSpinner(notes, beats, dur)
   logCounts('generateCustom', notes)
   return notes
 }
 
-// 结尾：一个至少 5 秒的长 Hold
-function addLongEndingHold(notes: Note[], beats: Beat[], dur: number) {
+// 结尾：一个至少 5 秒的长 Spinner
+function addLongEndingSpinner(notes: Note[], beats: Beat[], dur: number) {
   if (beats.length === 0) return
   const last = beats[beats.length - 1]
   const endTime = dur - 200
@@ -325,7 +325,7 @@ export function generateBeatmap(
   switch (mode) {
     case 'simple': return generateSimple(beats, dur, bpm)
     case 'advanced': return generateAdvanced(beats, dur, bpm)
-    case 'custom': return generateCustom(beats, dur, customOptions || { density: 0.5, circleRatio: 0.5, tapRatio: 0.3, holdRatio: 0.2 })
+    case 'custom': return generateCustom(beats, dur, customOptions || { density: 0.5, circleRatio: 0.5, tapRatio: 0.3, spinnerRatio: 0.2 })
     default: return generateSimple(beats, dur, bpm)
   }
 }

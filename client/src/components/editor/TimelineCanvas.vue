@@ -34,6 +34,7 @@ const COLORS = {
   circleStroke: 'rgba(255, 100, 150, 1)',
   tap: 'rgba(255, 140, 0, 0.9)',
   tapStroke: 'rgba(255, 140, 0, 1)',
+  spinnerStroke: 'rgba(255, 215, 0, 1)',
   hold: 'rgba(255, 215, 0, 0.4)',
   holdStroke: 'rgba(255, 215, 0, 0.8)',
   selected: 'rgba(255, 255, 100, 0.9)',
@@ -164,16 +165,17 @@ function drawNotes(ctx: CanvasRenderingContext2D, width: number) {
       ctx.fill(); ctx.stroke()
     }
 
-    if (note.type === 'spinner' && note.endTime) {
-      const endX = timeToX(note.endTime)
-      ctx.fillStyle = COLORS.hold
-      ctx.fillRect(x, y - 6, endX - x, 12)
+    if (note.type === 'spinner') {
+      // Spinner：圆形 + 旋转箭头图标
       ctx.fillStyle = color
-      ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS * 0.7, 0, Math.PI * 2); ctx.fill()
-      ctx.beginPath(); ctx.arc(endX, y, NOTE_RADIUS * 0.7, 0, Math.PI * 2); ctx.fill()
+      ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS, 0, Math.PI * 2); ctx.fill()
+      ctx.strokeStyle = COLORS.spinnerStroke; ctx.lineWidth = 2; ctx.stroke()
+      // 旋转箭头图标
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5
+      ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS * 0.6, 0, Math.PI * 1.2); ctx.stroke()
       if (isSelected) {
         ctx.strokeStyle = COLORS.selected; ctx.lineWidth = 2
-        ctx.strokeRect(x - 2, y - 8, endX - x + 4, 16)
+        ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS + 5, 0, Math.PI * 2); ctx.stroke()
       }
     }
   })

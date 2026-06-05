@@ -401,7 +401,7 @@ function render() {
     if (td > -500 && td < 2500) {
       if (note.type === 'circle') drawCircle(ctx, note, ct)
       else if (note.type === 'tap') drawTap(ctx, note, ct)
-      else if (note.type === 'hold') drawSpinner(ctx, note, ct)
+      else if (note.type === 'spinner') drawSpinner(ctx, note, ct)
     }
   })
 
@@ -418,7 +418,7 @@ function render() {
             addJT('miss', note.x * canvasWidth, note.y * canvasHeight)
           }
         }
-        if (note.type === 'hold' && note.endTime && !processed.has(note.id)) {
+        if (note.type === 'spinner' && note.endTime && !processed.has(note.id)) {
           if (ct - note.endTime > 150) {
             gameStore.handleMiss(note.id); playHitSound('miss')
             addJT('miss', note.x * canvasWidth, note.y * canvasHeight)
