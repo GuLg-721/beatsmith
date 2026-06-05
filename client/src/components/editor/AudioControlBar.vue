@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { useAudioStore } from '@/stores/audioStore'
+import { useEditorStore } from '@/stores/editorStore'
 import { computed } from 'vue'
 
 const audioStore = useAudioStore()
+const editorStore = useEditorStore()
 
 function formatTime(ms: number): string {
   const min = Math.floor(ms / 60000)
@@ -19,6 +21,8 @@ function handleSeek(e: Event) {
   const target = e.target as HTMLInputElement
   const time = (parseFloat(target.value) / 100) * audioStore.duration
   audioStore.seek(time)
+  // 同步跳转时间轴视口到对应时间
+  editorStore.viewportOffset = Math.max(0, time - 2000) // 前移 2 秒显示上下文
 }
 </script>
 
