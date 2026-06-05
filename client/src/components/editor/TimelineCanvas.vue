@@ -133,7 +133,7 @@ function drawNotes(ctx: CanvasRenderingContext2D, width: number) {
     const color = isSelected ? COLORS.selected : (
       note.type === 'circle' ? COLORS.circle :
       note.type === 'tap' ? COLORS.tap :
-      note.type === 'hold' ? COLORS.holdStroke :
+      note.type === 'spinner' ? COLORS.holdStroke :
       COLORS.circle
     )
 
@@ -164,7 +164,7 @@ function drawNotes(ctx: CanvasRenderingContext2D, width: number) {
       ctx.fill(); ctx.stroke()
     }
 
-    if (note.type === 'hold' && note.endTime) {
+    if (note.type === 'spinner' && note.endTime) {
       const endX = timeToX(note.endTime)
       ctx.fillStyle = COLORS.hold
       ctx.fillRect(x, y - 6, endX - x, 12)
@@ -239,7 +239,7 @@ function findNoteAtPosition(canvasX: number, canvasY: number): Note | null {
     const y = normToY(note.y)
 
     // Hold 音符：检查是否在时间范围内
-    if (note.type === 'hold' && note.endTime) {
+    if (note.type === 'spinner' && note.endTime) {
       const endX = timeToX(note.endTime)
       const inTimeRange = canvasX >= x - 10 && canvasX <= endX + 10
       const inYRange = Math.abs(canvasY - y) < NOTE_RADIUS + 10
@@ -287,7 +287,7 @@ function handleMouseDown(e: MouseEvent) {
     dragStartY = y
 
     // Hold 音符：检测是否点击了端点（用于拉伸）
-    if (note.type === 'hold' && note.endTime) {
+    if (note.type === 'spinner' && note.endTime) {
       const endX = timeToX(note.endTime)
       const distToEnd = Math.abs(x - endX)
       if (distToEnd < 15) {
@@ -343,13 +343,13 @@ function handleMouseMove(e: MouseEvent) {
     const note = editorStore.notes.find(n => n.id === dragNoteId)
     if (note) {
       const newTime = snapTime(xToTime(x))
-      if (dragIsResizing && note.type === 'hold' && note.endTime) {
+      if (dragIsResizing && note.type === 'spinner' && note.endTime) {
         // 拉伸 Hold 端点
         note.endTime = Math.max(note.time + 100, newTime)
       } else {
         note.time = newTime
         // Hold 音符：同步移动 endTime
-        if (note.type === 'hold' && note.endTime && dragOffsetTime !== undefined) {
+        if (note.type === 'spinner' && note.endTime && dragOffsetTime !== undefined) {
           note.endTime = newTime + dragOffsetTime
         }
       }

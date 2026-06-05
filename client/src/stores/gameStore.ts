@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Note } from '@/engine/BeatGenerator'
-import { judgeHit, judgeHold, calculateAccuracy, calculateGrade, type JudgmentType } from '@/engine/HitDetector'
+import { judgeHit, calculateAccuracy, calculateGrade, type JudgmentType } from '@/engine/HitDetector'
 
 export type GameState = 'loading' | 'ready' | 'playing' | 'paused' | 'result'
 
@@ -17,6 +17,11 @@ export const useGameStore = defineStore('game', () => {
   const state = ref<GameState>('loading')
   const notes = ref<Note[]>([])
   const currentMapId = ref<string | null>(null)
+
+  // Spinner 状态
+  const activeSpinner = ref<Note | null>(null)
+  const spinnerClicks = ref(0)
+  const spinnerStartTime = ref(0)
 
   // 游戏分数
   const score = ref(0)
@@ -35,7 +40,6 @@ export const useGameStore = defineStore('game', () => {
   const processedNotes = ref<Set<string>>(new Set())
 
   // Hold 状态
-  const activeHold = ref<{ noteId: string; startTime: number } | null>(null)
 
   const totalNotes = computed(() => notes.value.length)
   const accuracy = computed(() => calculateAccuracy(perfect.value, great.value, good.value, miss.value))
@@ -56,7 +60,6 @@ export const useGameStore = defineStore('game', () => {
     miss.value = 0
     feedbacks.value = []
     processedNotes.value = new Set()
-    activeHold.value = null
     state.value = 'ready'
   }
 
@@ -143,17 +146,13 @@ export const useGameStore = defineStore('game', () => {
    * 开始 Hold
    */
   function startHold(noteId: string, time: number) {
-    activeHold.value = { noteId, startTime: time }
   }
 
   /**
    * 结束 Hold
    */
   function endHold(noteId: string, endTime: number, noteStart: number, noteEnd: number) {
-    if (!activeHold.value || activeHold.value.noteId !== noteId) return null
 
-    const result = judgeHold(activeHold.value.startTime, endTime, noteStart, noteEnd)
-    activeHold.value = null
     processedNotes.value.add(noteId)
 
     score.value += result.points
@@ -212,7 +211,74 @@ export const useGameStore = defineStore('game', () => {
     miss.value = 0
     feedbacks.value = []
     processedNotes.value = new Set()
-    activeHold.value = null
+    activeSpinner.value = null
+    spinnerClicks.value = 0
+  }
+
+  // Spinner 函数
+  function startSpinner(note: Note, time: number) {
+    activeSpinner.value = note
+    spinnerClicks.value = 0
+    spinnerStartTime.value = time
+    processedNotes.value.add(note.id)
+  }
+
+  function clickSpinner() {
+    if (!activeSpinner.value) return
+    spinnerClicks.value++
+    const requiredClicks = getRequiredClicks(activeSpinner.value)
+    const progress = Math.min(1, spinnerClicks.value / requiredClicks)
+
+    // 每次点击加分
+    score.value += 30
+    combo.value++
+    maxCombo.value = Math.max(maxCombo.value, combo.value)
+
+    // 检查是否完成
+    if (spinnerClicks.value >= requiredClicks) {
+      perfect.value++
+      return 'perfect'
+    }
+    return null
+  }
+
+  function endSpinner(time: number) {
+    if (!activeSpinner.value) return null
+
+    const requiredClicks = getRequiredClicks(activeSpinner.value)
+    const elapsed = time - spinnerStartTime.value
+    const duration = (activeSpinner.value.endTime || activeSpinner.value.time + 3000) - activeSpinner.value.time
+    const timeRatio = elapsed / duration
+
+    let type: JudgmentType
+    if (spinnerClicks.value >= requiredClicks) {
+      type = 'perfect'
+      perfect.value++
+      score.value += 300
+    } else if (spinnerClicks.value >= requiredClicks * 0.7) {
+      type = 'great'
+      great.value++
+      score.value += 150
+    } else if (spinnerClicks.value >= requiredClicks * 0.4) {
+      type = 'good'
+      good.value++
+      score.value += 50
+    } else {
+      type = 'miss'
+      miss.value++
+      combo.value = 0
+    }
+
+    const result = { type, clicks: spinnerClicks.value, required: requiredClicks }
+    activeSpinner.value = null
+    spinnerClicks.value = 0
+    return result
+  }
+
+  function getRequiredClicks(note: Note): number {
+    const duration = (note.endTime || note.time + 3000) - note.time
+    const seconds = duration / 1000
+    return Math.floor(5 + seconds * 4) // 每秒约 4-5 次
   }
 
   return {
@@ -240,6 +306,12 @@ export const useGameStore = defineStore('game', () => {
     handleMiss,
     startHold,
     endHold,
+    activeSpinner,
+    spinnerClicks,
+    spinnerStartTime,
+    startSpinner,
+    clickSpinner,
+    endSpinner,
     getResult,
     reset
   }

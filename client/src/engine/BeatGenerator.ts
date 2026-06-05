@@ -7,11 +7,11 @@ import type { Beat } from './BeatDetector'
 
 export interface Note {
   id: string
-  type: 'circle' | 'hold' | 'tap'
+  type: 'circle' | 'tap' | 'spinner'
   time: number
   x: number
   y: number
-  endTime?: number
+  endTime?: number  // spinner 结束时间
 }
 
 export type GenerateMode = 'simple' | 'advanced' | 'custom'
@@ -92,7 +92,7 @@ function fillGaps(notes: Note[], beats: Beat[], bpm: number) {
       const holdDur = Math.min(gap * 0.6, intervalMs * 2)
       filled.push({
         id: nanoid(8),
-        type: 'hold',
+        type: 'spinner',
         time: midTime,
         x: 0.1 + Math.random() * 0.8,
         y: 0.1 + Math.random() * 0.8,
@@ -303,7 +303,7 @@ function addLongEndingHold(notes: Note[], beats: Beat[], dur: number) {
 
   notes.push({
     id: nanoid(8),
-    type: 'hold',
+    type: 'spinner',
     time: startTime,
     x: 0.5,
     y: 0.5,
