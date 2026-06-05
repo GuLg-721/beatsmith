@@ -251,9 +251,22 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   const holdDuration = note.endTime - note.time
   const margin = 40
   const availH = canvasHeight - y - margin
-  // 快节奏音游速度：每 100ms 约 20px
   const endY = Math.min(y + holdDuration * 0.2, y + availH, canvasHeight - margin)
   const endX = x + (x > canvasWidth / 2 ? -1 : 1) * 25
+
+  // 调试：记录 Hold 参数
+  if (isActive && holdDuration > 1000) {
+    const segCount = Math.max(3, Math.floor(Math.sqrt((endX - x) ** 2 + (endY - y) ** 2) / 80))
+    console.log('Hold render:', {
+      duration: Math.round(holdDuration),
+      startX: Math.round(x), startY: Math.round(y),
+      endX: Math.round(endX), endY: Math.round(endY),
+      segments: segCount,
+      progress: holdProgress.value,
+      isActive,
+      td: Math.round(td)
+    })
+  }
 
   let alpha = 1
   if (td > 1200 && !isActive) alpha = Math.max(0, 1 - (td - 1200) / 600)
