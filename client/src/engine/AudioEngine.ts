@@ -114,7 +114,8 @@ export class AudioEngine {
   pause() {
     if (!this.context || !this._isPlaying) return
 
-    this.pauseOffset = this.getCurrentTime()
+    // 存储秒数（sourceNode.start 需要秒）
+    this.pauseOffset = (this.context.currentTime - this.startTime) + this.pauseOffset
     this.sourceNode?.stop()
     this.sourceNode = null
     this._isPlaying = false

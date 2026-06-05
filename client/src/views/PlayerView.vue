@@ -7,6 +7,7 @@ import { getGradeColor } from '@/utils/grade'
 import GameCanvas from '@/components/player/GameCanvas.vue'
 import ResultScreen from '@/components/player/ResultScreen.vue'
 import { NSpin, NButton } from 'naive-ui'
+import { motion } from 'motion-v'
 import api from '@/utils/api'
 
 const route = useRoute()
@@ -16,6 +17,8 @@ const audioStore = useAudioStore()
 
 const loading = ref(true)
 const mapData = ref<any>(null)
+const countdown = ref(0)
+let countdownTimer: ReturnType<typeof setInterval> | null = null
 
 const mapId = computed(() => route.params.mapId as string)
 
@@ -23,43 +26,45 @@ onMounted(async () => {
   try {
     const res = await api.get(`/api/maps/${mapId.value}`)
     mapData.value = res.data.map
-
     await audioStore.loadAudioUrl(`/uploads/${mapData.value.audioFile}`)
-
-    // 设置默认音量 50%
     audioStore.setVolume(0.5)
 
     let notes = []
     if (mapData.value.mapData) {
-      try {
-        const parsed = JSON.parse(mapData.value.mapData)
-        notes = parsed.notes || []
-      } catch (e) {
-        console.error('Failed to parse map data:', e)
-      }
+      try { notes = JSON.parse(mapData.value.mapData).notes || [] } catch {}
     }
 
     gameStore.initGame(mapId.value, notes)
     loading.value = false
   } catch (err) {
-    console.error('Failed to load map:', err)
     loading.value = false
   }
 })
 
-async function startGame() {
+function startGame() {
   gameStore.startGame()
-  await audioStore.play()
+  audioStore.play()
 }
 
 function togglePause() {
   if (gameStore.state === 'playing') {
     gameStore.pauseGame()
     audioStore.pause()
-  } else if (gameStore.state === 'paused') {
-    gameStore.resumeGame()
-    audioStore.play()
   }
+}
+
+function resumeGame() {
+  // 开始倒计时
+  countdown.value = 3
+  countdownTimer = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      clearInterval(countdownTimer!)
+      countdownTimer = null
+      gameStore.resumeGame()
+      audioStore.play()
+    }
+  }, 1000)
 }
 </script>
 
@@ -73,57 +78,82 @@ function togglePause() {
 
     <!-- 准备界面 -->
     <div v-else-if="gameStore.state === 'ready'" class="ready-screen">
-      <div class="ready-info">
-        <h1>{{ mapData?.title }}</h1>
-        <p v-if="mapData?.artist">{{ mapData.artist }}</p>
-        <p class="hint">点击开始游戏</p>
-      </div>
-      <NButton type="primary" size="large" @click="startGame">
-        🎮 开始游戏
-      </NButton>
-      <NButton @click="router.back()" style="margin-top: 1rem">
-        返回
-      </NButton>
+      <motion.div
+        class="ready-content"
+        :initial="{ opacity: 0, y: 30 }"
+        :animate="{ opacity: 1, y: 0 }"
+        :transition="{ duration: 0.6 }"
+      >
+        <h1 class="map-title">{{ mapData?.title }}</h1>
+        <p class="map-artist" v-if="mapData?.artist">{{ mapData.artist }}</p>
+        <p class="ready-hint">点击开始游戏</p>
+        <NButton type="primary" size="large" class="start-btn" @click="startGame">
+          🎮 开始游戏
+        </NButton>
+        <NButton class="back-btn" @click="router.back()">返回</NButton>
+      </motion.div>
     </div>
 
-    <!-- 游戏中 + 暂停 -->
+    <!-- 游戏中 -->
     <template v-if="gameStore.state === 'playing' || gameStore.state === 'paused'">
-      <div class="game-area">
-        <!-- HUD -->
-        <div class="hud">
-          <div class="hud-left">
-            <div class="score-label">SCORE</div>
-            <div class="score">{{ gameStore.score.toLocaleString() }}</div>
-          </div>
-          <div class="hud-center">
-            <Transition name="combo-pop">
-              <div class="combo" v-if="gameStore.combo > 1" :key="gameStore.combo">
-                {{ gameStore.combo }}
-                <span class="combo-label">COMBO</span>
-              </div>
-            </Transition>
-          </div>
-          <div class="hud-right">
-            <div class="accuracy">{{ gameStore.accuracy.toFixed(1) }}%</div>
-            <div class="grade-badge" :style="{ color: getGradeColor(gameStore.grade), borderColor: getGradeColor(gameStore.grade) }">
-              {{ gameStore.grade }}
+      <GameCanvas />
+
+      <!-- HUD -->
+      <div class="hud">
+        <div class="hud-left">
+          <div class="score-label">SCORE</div>
+          <div class="score">{{ gameStore.score.toLocaleString() }}</div>
+        </div>
+        <div class="hud-center">
+          <Transition name="combo-pop">
+            <div class="combo" v-if="gameStore.combo > 1" :key="gameStore.combo">
+              {{ gameStore.combo }}
+              <span class="combo-label">COMBO</span>
             </div>
+          </Transition>
+        </div>
+        <div class="hud-right">
+          <div class="accuracy">{{ gameStore.accuracy.toFixed(1) }}%</div>
+          <div class="grade-badge" :style="{ color: getGradeColor(gameStore.grade), borderColor: getGradeColor(gameStore.grade) }">
+            {{ gameStore.grade }}
           </div>
         </div>
-
-        <GameCanvas />
-
-        <!-- 暂停按钮 -->
-        <div class="pause-btn" @click="togglePause()">⏸</div>
       </div>
 
+      <!-- 暂停按钮（左上角，避开 HUD） -->
+      <button v-if="gameStore.state === 'playing'" class="pause-btn" @click="togglePause">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="6" y="4" width="4" height="16" rx="1"/>
+          <rect x="14" y="4" width="4" height="16" rx="1"/>
+        </svg>
+      </button>
+
       <!-- 暂停遮罩 -->
-      <div v-if="gameStore.state === 'paused'" class="pause-overlay" @click.stop>
-        <div class="pause-card" @click.stop>
+      <div v-if="gameStore.state === 'paused' && countdown === 0" class="pause-overlay" @click.stop>
+        <motion.div
+          class="pause-card"
+          :initial="{ opacity: 0, scale: 0.9 }"
+          :animate="{ opacity: 1, scale: 1 }"
+          @click.stop
+        >
           <h2>⏸ 暂停</h2>
-          <NButton type="primary" @click.stop="togglePause()">继续</NButton>
-          <NButton @click.stop="router.back()" style="margin-top: 0.5rem">退出</NButton>
-        </div>
+          <NButton type="primary" size="large" @click.stop="resumeGame">继续游戏</NButton>
+          <NButton class="back-btn" @click.stop="router.back()" style="margin-top: 0.75rem">退出</NButton>
+        </motion.div>
+      </div>
+
+      <!-- 倒计时遮罩 -->
+      <div v-if="countdown > 0" class="countdown-overlay" @click.stop>
+        <motion.div
+          class="countdown-number"
+          :key="countdown"
+          :initial="{ opacity: 0, scale: 2 }"
+          :animate="{ opacity: 1, scale: 1 }"
+          :exit="{ opacity: 0, scale: 0.5 }"
+          :transition="{ duration: 0.3 }"
+        >
+          {{ countdown }}
+        </motion.div>
       </div>
     </template>
 
@@ -134,14 +164,16 @@ function togglePause() {
 
 <style scoped>
 .player-page {
-  min-height: 100vh;
-  background: var(--bg);
-  display: flex;
-  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #080810;
+  position: relative;
 }
 
 .loading {
-  flex: 1;
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -151,102 +183,104 @@ function togglePause() {
 }
 
 .ready-screen {
-  flex: 1;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, #0d0520, #060610);
+}
+
+.ready-content {
+  text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
-.ready-info {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.ready-info h1 {
-  font-size: 2rem;
+.map-title {
+  font-size: 2.5rem;
+  font-weight: 700;
   color: var(--ink);
-  margin: 0 0 0.5rem;
+  margin: 0;
 }
 
-.ready-info p {
+.map-artist {
+  font-size: 1.125rem;
   color: var(--muted);
   margin: 0;
 }
 
-.hint {
+.ready-hint {
   font-size: 0.875rem;
   color: var(--primary);
-  margin-top: 1rem !important;
+  margin: 0.5rem 0 1rem;
 }
 
-.game-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  position: relative;
+.start-btn {
+  font-size: 1.125rem !important;
+  padding: 0.75rem 3rem !important;
+  border-radius: 12px !important;
 }
 
+.back-btn {
+  background: transparent !important;
+  border: 1px solid var(--border) !important;
+  color: var(--muted) !important;
+}
+
+/* HUD */
 .hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(180deg, oklch(0.06 0.01 280 / 0.9), oklch(0.06 0.01 280 / 0.3));
-  border-bottom: 1px solid oklch(0.62 0.22 350 / 0.1);
+  padding-left: 4rem;
+  background: linear-gradient(180deg, oklch(0.06 0.01 280 / 0.95), transparent);
+  z-index: 10;
+  pointer-events: none;
 }
 
-.hud-left, .hud-right {
-  min-width: 120px;
-}
-
-.hud-right {
-  text-align: right;
-}
+.hud-left, .hud-right { min-width: 120px; }
+.hud-right { text-align: right; }
 
 .score-label, .combo-label {
   font-size: 0.625rem;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   color: oklch(0.50 0.005 280);
 }
 
 .score {
   font-size: 1.75rem;
   font-weight: 700;
-  color: var(--ink);
+  color: white;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 
 .combo {
-  font-size: 2.5rem;
+  font-size: 3rem;
   font-weight: 900;
   color: var(--primary);
   text-align: center;
   line-height: 1;
-  text-shadow: 0 0 20px oklch(0.62 0.22 350 / 0.5);
+  text-shadow: 0 0 30px oklch(0.62 0.22 350 / 0.6);
 }
 
-.combo-enter-active {
-  transition: all 0.15s ease-out;
-}
-.combo-leave-active {
-  transition: all 0.1s ease-in;
-}
-.combo-enter-from {
-  opacity: 0;
-  transform: scale(1.3);
-}
-.combo-leave-to {
-  opacity: 0;
-  transform: scale(0.8);
-}
+.combo-enter-active { transition: all 0.15s ease-out; }
+.combo-leave-active { transition: all 0.1s ease-in; }
+.combo-enter-from { opacity: 0; transform: scale(1.4); }
+.combo-leave-to { opacity: 0; transform: scale(0.7); }
 
 .accuracy {
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--ink);
+  color: white;
   font-variant-numeric: tabular-nums;
 }
 
@@ -260,46 +294,71 @@ function togglePause() {
   margin-top: 0.25rem;
 }
 
+/* 暂停按钮 */
 .pause-btn {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  width: 40px;
-  height: 40px;
+  position: fixed;
+  top: 0.75rem;
+  left: 1.5rem;
+  z-index: 20;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: oklch(0 0 0 / 0.5);
-  border-radius: 50%;
+  background: oklch(0.15 0.01 280 / 0.7);
+  border: 1px solid oklch(0.30 0.01 280);
+  border-radius: 8px;
+  color: white;
   cursor: pointer;
-  font-size: 1.25rem;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
 .pause-btn:hover {
-  background: oklch(0 0 0 / 0.7);
+  background: oklch(0.20 0.01 280 / 0.9);
+  border-color: var(--primary);
 }
 
+/* 暂停遮罩 */
 .pause-overlay {
   position: fixed;
   inset: 0;
-  background: oklch(0 0 0 / 0.7);
+  background: oklch(0 0 0 / 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: 100;
 }
 
 .pause-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 2rem;
+  border-radius: 16px;
+  padding: 2.5rem;
   text-align: center;
+  min-width: 280px;
 }
 
 .pause-card h2 {
-  margin: 0 0 1rem;
+  margin: 0 0 1.5rem;
   color: var(--ink);
+  font-size: 1.5rem;
+}
+
+/* 倒计时 */
+.countdown-overlay {
+  position: fixed;
+  inset: 0;
+  background: oklch(0 0 0 / 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.countdown-number {
+  font-size: 8rem;
+  font-weight: 900;
+  color: var(--primary);
+  text-shadow: 0 0 60px oklch(0.62 0.22 350 / 0.6);
 }
 </style>
