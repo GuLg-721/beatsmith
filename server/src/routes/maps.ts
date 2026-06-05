@@ -192,14 +192,24 @@ router.put('/:id', authMiddleware, (req: AuthRequest, res: Response) => {
       return
     }
 
-    db.run(
-      `UPDATE beatmaps SET title = COALESCE(?, title), artist = COALESCE(?, artist),
-       cover_image = COALESCE(?, cover_image), bpm = COALESCE(?, bpm),
-       map_data = COALESCE(?, map_data), duration = COALESCE(?, duration),
-       difficulty = COALESCE(?, difficulty), updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
-      [title, artist, coverImage, bpm, mapData, duration, difficulty, req.params.id]
-    )
+    // 构建动态 UPDATE
+    const updates: string[] = []
+    const params: any[] = []
+
+    if (title !== undefined) { updates.push('title = ?'); params.push(title) }
+    if (artist !== undefined) { updates.push('artist = ?'); params.push(artist) }
+    if (coverImage !== undefined) { updates.push('cover_image = ?'); params.push(coverImage) }
+    if (bpm !== undefined) { updates.push('bpm = ?'); params.push(bpm) }
+    if (mapData !== undefined) { updates.push('map_data = ?'); params.push(mapData) }
+    if (duration !== undefined) { updates.push('duration = ?'); params.push(duration) }
+    if (difficulty !== undefined) { updates.push('difficulty = ?'); params.push(difficulty) }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP')
+    params.push(req.params.id)
+
+    if (updates.length > 1) {
+      db.run(`UPDATE beatmaps SET ${updates.join(', ')} WHERE id = ?`, params)
+    }
     scheduleSave()
 
     res.status(200).json({ message: '谱面更新成功' })
