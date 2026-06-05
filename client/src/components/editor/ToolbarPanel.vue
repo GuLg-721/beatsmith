@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useEditorStore } from '@/stores/editorStore'
+import { useAuthStore } from '@/stores/authStore'
 import { useAudioStore } from '@/stores/audioStore'
-import { NButton, NSlider } from 'naive-ui'
+import { NButton, NSlider, useMessage } from 'naive-ui'
 import api from '@/utils/api'
 
+const router = useRouter()
 const editorStore = useEditorStore()
+const authStore = useAuthStore()
 const audioStore = useAudioStore()
+const message = useMessage()
+
 const volume = ref(50)
 const saving = ref(false)
 
@@ -24,15 +30,24 @@ function handleExport() {
   a.download = 'beatmap.json'
   a.click()
   URL.revokeObjectURL(url)
+  message.success('导出成功')
 }
 
 async function handleSave() {
   if (!audioStore.isLoaded) return
+
+  if (!authStore.isLoggedIn) {
+    message.warning('请先登录')
+    router.push('/login')
+    return
+  }
+
   saving.value = true
 
   try {
     // 如果还没有上传过音频到服务器，先上传
     if (!audioStore.uploadedFilename && audioStore.originalFile) {
+      message.info('正在上传音频...')
       const formData = new FormData()
       formData.append('audio', audioStore.originalFile)
       const uploadRes = await api.post('/api/upload/audio', formData, {
@@ -50,17 +65,21 @@ async function handleSave() {
       })
     } else {
       // 创建新谱面
+      const title = audioStore.fileName.replace(/\.[^.]+$/, '') || '未命名歌曲'
       const res = await api.post('/api/maps', {
-        title: audioStore.fileName.replace(/\.[^.]+$/, '') || '未命名歌曲',
-        audioFile: audioFile,
+        title,
+        audioFile,
         bpm: audioStore.estimatedBPM || null,
         mapData: editorStore.exportJSON()
       })
       editorStore.mapId = res.data.id
     }
+
     editorStore.isDirty = false
-  } catch (err) {
+    message.success('保存成功！')
+  } catch (err: any) {
     console.error('Save failed:', err)
+    message.error(err.response?.data?.message || '保存失败')
   } finally {
     saving.value = false
   }
