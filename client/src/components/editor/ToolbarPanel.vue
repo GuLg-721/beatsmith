@@ -7,7 +7,7 @@ import api from '@/utils/api'
 
 const editorStore = useEditorStore()
 const audioStore = useAudioStore()
-const volume = ref(80)
+const volume = ref(50)
 const saving = ref(false)
 
 function handleVolumeChange(val: number) {
@@ -27,8 +27,22 @@ function handleExport() {
 }
 
 async function handleSave() {
+  if (!audioStore.isLoaded) return
   saving.value = true
+
   try {
+    // 如果还没有上传过音频到服务器，先上传
+    if (!audioStore.uploadedFilename && audioStore.originalFile) {
+      const formData = new FormData()
+      formData.append('audio', audioStore.originalFile)
+      const uploadRes = await api.post('/api/upload/audio', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      audioStore.uploadedFilename = uploadRes.data.filename
+    }
+
+    const audioFile = audioStore.uploadedFilename || audioStore.fileName
+
     if (editorStore.mapId) {
       // 更新已有谱面
       await api.put(`/api/maps/${editorStore.mapId}`, {
@@ -38,7 +52,7 @@ async function handleSave() {
       // 创建新谱面
       const res = await api.post('/api/maps', {
         title: audioStore.fileName.replace(/\.[^.]+$/, '') || '未命名歌曲',
-        audioFile: audioStore.fileName,
+        audioFile: audioFile,
         bpm: audioStore.estimatedBPM || null,
         mapData: editorStore.exportJSON()
       })
@@ -58,6 +72,7 @@ async function handleSave() {
     <div class="toolbar-left">
       <router-link to="/songs" class="back-link">← 返回</router-link>
       <span class="title">⚒️ 编辑器</span>
+      <span v-if="editorStore.isDirty" class="dirty-dot" title="有未保存的更改" />
     </div>
 
     <div class="toolbar-center">
@@ -116,6 +131,13 @@ async function handleSave() {
 .title {
   font-weight: 600;
   color: var(--ink);
+}
+
+.dirty-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warning);
 }
 
 .toolbar-center {

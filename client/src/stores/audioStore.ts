@@ -11,6 +11,8 @@ export const useAudioStore = defineStore('audio', () => {
   const currentTime = ref(0)
   const duration = ref(0)
   const fileName = ref('')
+  const originalFile = ref<File | null>(null)
+  const uploadedFilename = ref<string | null>(null)
 
   // 节拍检测结果
   const detectedBeats = ref<Beat[]>([])
@@ -28,6 +30,7 @@ export const useAudioStore = defineStore('audio', () => {
   async function loadAudio(file: File) {
     await engine.loadFromFile(file)
     isLoaded.value = true
+    originalFile.value = file
     duration.value = engine.getDuration()
     fileName.value = file.name
     currentTime.value = 0
@@ -153,6 +156,8 @@ export const useAudioStore = defineStore('audio', () => {
     currentTime,
     duration,
     fileName,
+    originalFile,
+    uploadedFilename,
     detectedBeats,
     estimatedBPM,
     beatTimeline,

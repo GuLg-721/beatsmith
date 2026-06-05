@@ -54,6 +54,7 @@ onMounted(() => {
     api.get(`/api/maps/${mapId}`).then(async (res) => {
       const map = res.data.map
       editorStore.mapId = mapId
+      audioStore.uploadedFilename = map.audioFile
       loading.value = true
       try {
         await audioStore.loadAudioUrl(`/uploads/${map.audioFile}`)
