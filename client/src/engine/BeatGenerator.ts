@@ -122,21 +122,18 @@ function analyzeBeatEnergy(beats: Beat[], durationMs: number): Map<number, 'high
 
 /**
  * 简单模式：根据能量分布生成
- * 高能量 → Tap 连续
- * 低能量 → Circle
- * 过渡 → Hold
  */
-function generateSimple(beats: Beat[], durationMs: number): Note[] {
+function generateSimple(beats: Beat[], durationMs: number, bpm: number): Note[] {
   const notes: Note[] = []
   const energyMap = analyzeBeatEnergy(beats, durationMs)
   let tapCluster = 0
   let lastHoldEnd = 0
+  const intervalMs = 60000 / bpm
 
   for (let i = 0; i < beats.length; i++) {
     const beat = beats[i]
     const energy = energyMap.get(i) || 'low'
 
-    // 跳过 Hold 时间范围内的节拍
     if (beat.time < lastHoldEnd) continue
 
     const pos = randomPosition(notes)
@@ -144,64 +141,39 @@ function generateSimple(beats: Beat[], durationMs: number): Note[] {
 
     switch (energy) {
       case 'high':
-        // 高能量：Tap 连续出现（给玩家爽感）
         type = 'tap'
         tapCluster++
-        // 每 8 个 Tap 插入一个 Circle 作为节奏变化
-        if (tapCluster >= 8) {
-          type = 'circle'
-          tapCluster = 0
-        }
+        if (tapCluster >= 8) { type = 'circle'; tapCluster = 0 }
         break
-
       case 'transition':
-        // 过渡段：Hold 音符
         type = 'hold'
         tapCluster = 0
-        // Hold 持续时间：1/4 到 1 拍
-        const intervalMs = 60000 / (120) // 默认 BPM
-        const holdMult = [0.25, 0.5, 0.75, 1.0][Math.floor(Math.random() * 4)]
-        lastHoldEnd = beat.time + intervalMs * holdMult
+        lastHoldEnd = beat.time + intervalMs * [0.5, 0.75, 1.0][Math.floor(Math.random() * 3)]
         break
-
       default:
-        // 低能量：Circle 为主
         type = 'circle'
         tapCluster = 0
         break
     }
 
-    const note: Note = {
-      id: nanoid(8),
-      type,
-      time: beat.time,
-      x: pos.x,
-      y: pos.y
-    }
-
-    if (type === 'hold') {
-      note.endTime = lastHoldEnd
-    }
-
+    const note: Note = { id: nanoid(8), type, time: beat.time, x: pos.x, y: pos.y }
+    if (type === 'hold') note.endTime = lastHoldEnd
     notes.push(note)
   }
 
-  // 在歌曲结尾添加一个长时间 Hold（如果有）
+  // 歌曲结尾：长 Hold
   if (beats.length > 0) {
-    const lastBeat = beats[beats.length - 1]
-    const endTime = durationMs - 500 // 结束前 500ms
-    if (endTime - lastBeat.time > 1000) {
+    const last = beats[beats.length - 1]
+    const end = durationMs - 500
+    if (end - last.time > 1000) {
       const pos = randomPosition(notes)
-      notes.push({
-        id: nanoid(8),
-        type: 'hold',
-        time: lastBeat.time + 500,
-        x: pos.x,
-        y: pos.y,
-        endTime: endTime
-      })
+      notes.push({ id: nanoid(8), type: 'hold', time: last.time + 500, x: pos.x, y: pos.y, endTime: end })
     }
   }
+
+  const counts = { circle: 0, tap: 0, hold: 0 }
+  notes.forEach(n => counts[n.type]++)
+  console.log('generateSimple result:', counts)
 
   return notes
 }
@@ -378,7 +350,7 @@ export function generateBeatmap(
 
   switch (mode) {
     case 'simple':
-      return generateSimple(beats, durationMs)
+      return generateSimple(beats, durationMs, bpm)
     case 'advanced':
       return generateAdvanced(beats, durationMs, bpm)
     case 'custom':
@@ -387,6 +359,6 @@ export function generateBeatmap(
         energyThreshold: 0.5
       })
     default:
-      return generateSimple(beats, durationMs)
+      return generateSimple(beats, durationMs, bpm)
   }
 }
