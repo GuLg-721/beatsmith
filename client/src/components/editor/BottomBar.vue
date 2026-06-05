@@ -10,7 +10,9 @@ const audioStore = useAudioStore()
 const showGenerateModal = ref(false)
 const generateMode = ref<'simple' | 'advanced' | 'custom'>('simple')
 const customDensity = ref(0.5)
-const customEnergyThreshold = ref(0.5)
+const customCircle = ref(0.4)
+const customTap = ref(0.4)
+const customHold = ref(0.2)
 
 const snapOptions = [
   { label: '1/4', value: 4 },
@@ -35,7 +37,9 @@ function handleGenerate() {
     audioStore.duration,
     generateMode.value === 'custom' ? {
       density: customDensity.value,
-      energyThreshold: customEnergyThreshold.value,
+      circleRatio: customCircle.value,
+      tapRatio: customTap.value,
+      holdRatio: customHold.value,
     } : undefined
   )
 
@@ -125,9 +129,17 @@ function handleGenerate() {
         </div>
 
         <div v-if="generateMode === 'custom'" class="custom-options">
-          <label>能量阈值（Tap 触发线）: {{ (customEnergyThreshold * 100).toFixed(0) }}%</label>
-          <input type="range" v-model.number="customEnergyThreshold" min="0.2" max="0.8" step="0.05" />
-          <p class="option-hint">高于此值的节拍生成 Tap，低于此值生成 Circle/Hold</p>
+          <label>密度: {{ (customDensity * 100).toFixed(0) }}%</label>
+          <input type="range" v-model.number="customDensity" min="0.1" max="1" step="0.1" />
+
+          <label>🔴 Circle: {{ (customCircle * 100).toFixed(0) }}%</label>
+          <input type="range" v-model.number="customCircle" min="0" max="1" step="0.1" />
+
+          <label>🟠 Tap: {{ (customTap * 100).toFixed(0) }}%</label>
+          <input type="range" v-model.number="customTap" min="0" max="1" step="0.1" />
+
+          <label>🟡 Hold: {{ (customHold * 100).toFixed(0) }}%</label>
+          <input type="range" v-model.number="customHold" min="0" max="1" step="0.1" />
         </div>
 
         <div class="modal-actions">
