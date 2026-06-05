@@ -7,12 +7,11 @@ import type { Beat } from './BeatDetector'
 
 export interface Note {
   id: string
-  type: 'circle' | 'hold' | 'slide'
+  type: 'circle' | 'hold'
   time: number      // 毫秒
   x: number         // 0-1
   y: number         // 0-1
   endTime?: number  // 仅 hold
-  controlPoints?: { x: number; y: number }[] // 仅 slide
 }
 
 export type GenerateMode = 'simple' | 'advanced' | 'custom'
@@ -21,7 +20,6 @@ export interface CustomOptions {
   density: number      // 0.2 - 1.0
   circleRatio: number  // 0-1
   holdRatio: number    // 0-1
-  slideRatio: number   // 0-1
 }
 
 /**
@@ -123,14 +121,12 @@ function generateCustom(beats: Beat[], options: CustomOptions): Note[] {
 
     // 根据比例随机选择类型
     const rand = Math.random()
-    let type: 'circle' | 'hold' | 'slide'
+    let type: 'circle' | 'hold'
 
     if (rand < options.circleRatio) {
       type = 'circle'
-    } else if (rand < options.circleRatio + options.holdRatio) {
-      type = 'hold'
     } else {
-      type = 'slide'
+      type = 'hold'
     }
 
     const note: Note = {
@@ -144,13 +140,6 @@ function generateCustom(beats: Beat[], options: CustomOptions): Note[] {
     if (type === 'hold') {
       const nextBeat = beats[Math.min(i + step, beats.length - 1)]
       note.endTime = nextBeat.time
-    }
-
-    if (type === 'slide') {
-      // 生成 2-3 个控制点
-      const cp1 = randomPosition(notes, 1)
-      const cp2 = randomPosition(notes, 1)
-      note.controlPoints = [cp1, cp2]
     }
 
     notes.push(note)
@@ -179,8 +168,7 @@ export function generateBeatmap(
       return generateCustom(beats, customOptions || {
         density: 0.5,
         circleRatio: 0.6,
-        holdRatio: 0.3,
-        slideRatio: 0.1
+        holdRatio: 0.4
       })
     default:
       return generateSimple(beats)

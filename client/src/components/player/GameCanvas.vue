@@ -15,54 +15,67 @@ let canvasHeight = 0
 const NOTE_RADIUS = 22
 const HIT_RADIUS = 50
 
-// 点击音效
+// 空格键状态
+let spaceDown = false
+let activeHoldNote: Note | null = null
+let holdStartTime = 0
+
+// 音效
 let clickAudioCtx: AudioContext | null = null
-function playClickSound(type: string) {
+function getAudioCtx() {
   if (!clickAudioCtx) clickAudioCtx = new AudioContext()
-  const ctx = clickAudioCtx
+  return clickAudioCtx
+}
+
+function playTone(freq: number, dur: number, vol: number, wave: OscillatorType = 'sine', endFreq?: number) {
+  const ctx = getAudioCtx()
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
   osc.connect(gain); gain.connect(ctx.destination)
-  const sounds: Record<string, { freq: number; end?: number; wave: OscillatorType; dur: number; vol: number }> = {
-    perfect: { freq: 880, end: 1760, wave: 'sine', dur: 0.1, vol: 0.3 },
-    great: { freq: 660, wave: 'sine', dur: 0.08, vol: 0.25 },
-    good: { freq: 440, wave: 'triangle', dur: 0.06, vol: 0.2 },
-    miss: { freq: 200, end: 100, wave: 'sawtooth', dur: 0.15, vol: 0.15 },
-    click: { freq: 1200, wave: 'sine', dur: 0.03, vol: 0.1 },
-    hold: { freq: 520, wave: 'sine', dur: 0.04, vol: 0.15 },
-  }
-  const s = sounds[type] || sounds.click
-  osc.type = s.wave
-  osc.frequency.setValueAtTime(s.freq, ctx.currentTime)
-  if (s.end) osc.frequency.exponentialRampToValueAtTime(s.end, ctx.currentTime + s.dur)
-  gain.gain.setValueAtTime(s.vol, ctx.currentTime)
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + s.dur)
-  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + s.dur + 0.05)
+  osc.type = wave
+  osc.frequency.setValueAtTime(freq, ctx.currentTime)
+  if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, ctx.currentTime + dur)
+  gain.gain.setValueAtTime(vol, ctx.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur)
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + dur + 0.05)
 }
 
-// 点击波纹
+function playHitSound(type: string) {
+  const sounds: Record<string, [number, number, OscillatorType, number?]> = {
+    perfect: [880, 0.1, 'sine', 1760],
+    great: [660, 0.08, 'sine'],
+    good: [440, 0.06, 'triangle'],
+    miss: [200, 0.15, 'sawtooth', 100],
+  }
+  const s = sounds[type]
+  if (s) playTone(s[0], s[1], 0.25, s[2], s[3])
+}
+
+function playHoldStart() { playTone(520, 0.06, 0.2, 'sine') }
+function playHoldProgress() { playTone(600, 0.03, 0.1, 'triangle') }
+function playHoldEnd() { playTone(880, 0.1, 0.3, 'sine', 1200) }
+
+// 波纹
 interface ClickRipple { x: number; y: number; life: number; color: string }
 let clickRipples: ClickRipple[] = []
-function addClickRipple(x: number, y: number, color: string) {
-  clickRipples.push({ x, y, life: 1, color })
-}
+function addClickRipple(x: number, y: number, color: string) { clickRipples.push({ x, y, life: 1, color }) }
 
 // 粒子
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string; size: number }
 let particles: Particle[] = []
-function spawnHitParticles(x: number, y: number, color: string, count = 14) {
+function spawnParticles(x: number, y: number, color: string, count = 14) {
   for (let i = 0; i < count; i++) {
-    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3
-    const speed = 3 + Math.random() * 5
-    particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1, maxLife: 0.3 + Math.random() * 0.4, color, size: 2 + Math.random() * 4 })
+    const a = (Math.PI * 2 * i) / count + Math.random() * 0.3
+    const spd = 3 + Math.random() * 5
+    particles.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, life: 1, maxLife: 0.3 + Math.random() * 0.4, color, size: 2 + Math.random() * 4 })
   }
 }
 
 // 判定文字
-interface JudgmentText { text: string; color: string; x: number; y: number; life: number; scale: number }
-let judgmentTexts: JudgmentText[] = []
-function addJudgmentText(type: string, x: number, y: number) {
-  judgmentTexts.push({ text: type.toUpperCase(), color: { perfect: '#ffd700', great: '#4a9eff', good: '#4caf50', miss: '#ff5252' }[type] || '#fff', x, y, life: 1, scale: 1.8 })
+interface JText { text: string; color: string; x: number; y: number; life: number; scale: number }
+let jTexts: JText[] = []
+function addJText(type: string, x: number, y: number) {
+  jTexts.push({ text: type.toUpperCase(), color: { perfect: '#ffd700', great: '#4a9eff', good: '#4caf50', miss: '#ff5252' }[type] || '#fff', x, y, life: 1, scale: 1.8 })
 }
 
 // 封面
@@ -74,43 +87,39 @@ function loadCover(url: string) {
   img.src = url
 }
 
-// 当前激活的 Hold/Slide 状态
-const activeFollow = ref<{ noteId: string; progress: number } | null>(null)
+// Hold 进度
+const holdProgress = ref(0)
 
 const COLORS = {
-  circle: '#ff6496', circleGlow: 'rgba(255, 100, 150, 0.5)', circleInner: '#ffb3cc',
-  hold: '#64c8ff', holdTrack: 'rgba(100, 200, 255, 0.35)', holdBall: '#80d4ff',
-  slide: '#96ff96', slideTrack: 'rgba(150, 255, 150, 0.35)', slideBall: '#b0ffb0',
+  circle: '#ff6496', circleGlow: 'rgba(255, 100, 150, 0.5)',
+  hold: '#ffd700', holdGlow: 'rgba(255, 215, 0, 0.4)', holdTrack: 'rgba(255, 215, 0, 0.3)',
   approach: 'rgba(255, 255, 255, 0.9)', approachRing: 'rgba(255, 255, 255, 0.4)',
-  warning: 'rgba(255, 80, 80, 0.6)',
 }
 
 /**
  * 绘制背景
  */
-function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  const grad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.7)
-  grad.addColorStop(0, '#0d0520'); grad.addColorStop(0.5, '#0a0a18'); grad.addColorStop(1, '#060610')
-  ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h)
+function drawBg(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.7)
+  g.addColorStop(0, '#0d0520'); g.addColorStop(0.5, '#0a0a18'); g.addColorStop(1, '#060610')
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h)
 
   if (coverLoaded.value && coverImage.value) {
     ctx.save(); ctx.globalAlpha = 0.45; ctx.filter = 'blur(5px) saturate(1.2) brightness(0.85)'
-    const imgAspect = coverImage.value.width / coverImage.value.height
-    const canvasAspect = w / h
+    const ia = coverImage.value.width / coverImage.value.height, ca = w / h
     let sw: number, sh: number, sx: number, sy: number
-    if (imgAspect > canvasAspect) { sh = coverImage.value.height; sw = sh * canvasAspect; sx = (coverImage.value.width - sw) / 2; sy = 0 }
-    else { sw = coverImage.value.width; sh = sw / canvasAspect; sx = 0; sy = (coverImage.value.height - sh) / 2 }
-    ctx.drawImage(coverImage.value, sx, sy, sw, sh, 0, 0, w, h)
-    ctx.restore()
+    if (ia > ca) { sh = coverImage.value.height; sw = sh * ca; sx = (coverImage.value.width - sw) / 2; sy = 0 }
+    else { sw = coverImage.value.width; sh = sw / ca; sx = 0; sy = (coverImage.value.height - sh) / 2 }
+    ctx.drawImage(coverImage.value, sx, sy, sw, sh, 0, 0, w, h); ctx.restore()
   }
 
-  const freq = audioStore.frequencyData
-  if (freq.length > 0) {
-    const bass = freq.slice(0, 5).reduce((a, b) => a + b, 0) / (5 * 255)
+  const f = audioStore.frequencyData
+  if (f.length > 0) {
+    const bass = f.slice(0, 5).reduce((a, b) => a + b, 0) / (5 * 255)
     if (bass > 0.15) {
-      const pulseGrad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.5)
-      pulseGrad.addColorStop(0, `rgba(255, 100, 150, ${bass * 0.08})`); pulseGrad.addColorStop(1, 'transparent')
-      ctx.fillStyle = pulseGrad; ctx.fillRect(0, 0, w, h)
+      const pg = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.5)
+      pg.addColorStop(0, `rgba(255, 100, 150, ${bass * 0.08})`); pg.addColorStop(1, 'transparent')
+      ctx.fillStyle = pg; ctx.fillRect(0, 0, w, h)
     }
   }
 
@@ -120,20 +129,20 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
 }
 
 /**
- * 绘制 Circle 音符（红色，单击）
+ * 绘制 Circle 音符
  */
-function drawCircle(ctx: CanvasRenderingContext2D, note: Note, currentTime: number) {
+function drawCircle(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   const x = note.x * canvasWidth, y = note.y * canvasHeight
-  const timeUntilHit = note.time - currentTime
-  if (timeUntilHit < -400) return
+  const td = note.time - ct
+  if (td < -400) return
 
   let alpha = 1
-  if (timeUntilHit > 1000) alpha = Math.max(0, 1 - (timeUntilHit - 1000) / 500)
-  if (timeUntilHit < -150) alpha = Math.max(0, 1 + (timeUntilHit + 150) / 250)
+  if (td > 1000) alpha = Math.max(0, 1 - (td - 1000) / 500)
+  if (td < -150) alpha = Math.max(0, 1 + (td + 150) / 250)
   ctx.globalAlpha = alpha
 
   // 警告
-  if (timeUntilHit < -50 && timeUntilHit > -400 && !gameStore.processedNotes?.has(note.id)) {
+  if (td < -50 && td > -400 && !gameStore.processedNotes?.has(note.id)) {
     const wp = Math.sin(Date.now() * 0.015) * 0.5 + 0.5
     ctx.fillStyle = `rgba(255, 50, 50, ${0.12 * wp})`; ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS + 35, 0, Math.PI * 2); ctx.fill()
     ctx.strokeStyle = `rgba(255, 80, 80, ${0.5 + wp * 0.5})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS + 20 + wp * 10, 0, Math.PI * 2); ctx.stroke()
@@ -145,10 +154,10 @@ function drawCircle(ctx: CanvasRenderingContext2D, note: Note, currentTime: numb
 
   // 判定圈
   const ad = 1200
-  if (timeUntilHit > 0 && timeUntilHit < ad) {
-    const p = 1 - (timeUntilHit / ad), scale = 3.5 - 2.5 * p
-    ctx.strokeStyle = COLORS.approachRing; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS * scale, 0, Math.PI * 2); ctx.stroke()
-    ctx.strokeStyle = COLORS.approach; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS * scale, 0, Math.PI * 2); ctx.stroke()
+  if (td > 0 && td < ad) {
+    const p = 1 - td / ad, sc = 3.5 - 2.5 * p
+    ctx.strokeStyle = COLORS.approachRing; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS * sc, 0, Math.PI * 2); ctx.stroke()
+    ctx.strokeStyle = COLORS.approach; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS * sc, 0, Math.PI * 2); ctx.stroke()
   }
 
   // 音符
@@ -156,103 +165,107 @@ function drawCircle(ctx: CanvasRenderingContext2D, note: Note, currentTime: numb
   ng.addColorStop(0, '#ffb3cc'); ng.addColorStop(0.7, COLORS.circle); ng.addColorStop(1, '#cc3060')
   ctx.fillStyle = ng; ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS, 0, Math.PI * 2); ctx.fill()
   ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.stroke()
-
   ctx.globalAlpha = 1
 }
 
 /**
- * 绘制 Hold/Slide 轨道（MCosu 风格）
- * 轨道出现后，玩家需要将鼠标放在轨道上并按住跟随移动
+ * 绘制 Hold 音符（空格长按）
+ * 1. 出现时：跟 Circle 一样有判定圈动画
+ * 2. 按下空格后：显示从起点到终点的轨道
+ * 3. 松开空格时：完成判定
  */
-function drawTrack(ctx: CanvasRenderingContext2D, note: Note, currentTime: number, isSlide: boolean) {
-  if (!note.controlPoints || note.controlPoints.length === 0) return
+function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
+  if (!note.endTime) return
   const x = note.x * canvasWidth, y = note.y * canvasHeight
-  const timeUntilHit = note.time - currentTime
-  if (timeUntilHit < -500) return
+  const td = note.time - ct
+  if (td < -500) return
+
+  // 起点位置
+  const startX = note.x * canvasWidth
+  const startY = note.y * canvasHeight
+
+  // 终点位置（基于时长计算）
+  const holdDuration = note.endTime - note.time
+  const endY = startY + Math.min(holdDuration / 5, 350)
 
   let alpha = 1
-  if (timeUntilHit > 1200) alpha = Math.max(0, 1 - (timeUntilHit - 1200) / 600)
+  if (td > 1200) alpha = Math.max(0, 1 - (td - 1200) / 600)
   ctx.globalAlpha = alpha
 
-  const trackColor = isSlide ? COLORS.slideTrack : COLORS.holdTrack
-  const ballColor = isSlide ? COLORS.slideBall : COLORS.holdBall
-  const glowColor = isSlide ? 'rgba(150, 255, 150, 0.4)' : 'rgba(100, 200, 255, 0.4)'
-  const mainColor = isSlide ? COLORS.slide : COLORS.hold
+  const isActive = activeHoldNote?.id === note.id
+  const isCompleted = gameStore.processedNotes?.has(note.id)
 
-  // 构建路径点
-  const points = [{ x, y }, ...note.controlPoints.map(cp => ({ x: cp.x * canvasWidth, y: cp.y * canvasHeight }))]
-
-  // 轨道背景（宽条）
-  ctx.shadowColor = mainColor; ctx.shadowBlur = 15
-  ctx.strokeStyle = trackColor; ctx.lineWidth = 28; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
-  ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y)
-  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y)
-  ctx.stroke()
-  ctx.shadowBlur = 0
-
-  // 轨道边线
-  ctx.strokeStyle = mainColor; ctx.lineWidth = 2; ctx.globalAlpha = alpha * 0.6
-  ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y)
-  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y)
-  ctx.stroke()
-  ctx.globalAlpha = alpha
-
-  // 流动发光点（沿轨道移动，提示方向）
-  const flowSpeed = 0.002
-  const flowTime = Date.now() * flowSpeed
-  for (let i = 0; i < 4; i++) {
-    const t = (flowTime + i * 0.25) % 1
-    const totalLen = points.length - 1
-    const seg = Math.floor(t * totalLen)
-    const segT = (t * totalLen) - seg
-    if (seg < points.length - 1) {
-      const px = points[seg].x + (points[seg + 1].x - points[seg].x) * segT
-      const py = points[seg].y + (points[seg + 1].y - points[seg].y) * segT
-      ctx.fillStyle = `rgba(255, 255, 255, ${0.7 - i * 0.15})`
-      ctx.beginPath(); ctx.arc(px, py, 4 - i * 0.5, 0, Math.PI * 2); ctx.fill()
+  // 未激活时：显示判定圈（等待空格）
+  if (!isActive && !isCompleted) {
+    // 判定圈动画
+    const ad = 1200
+    if (td > 0 && td < ad) {
+      const p = 1 - td / ad, sc = 3.5 - 2.5 * p
+      ctx.strokeStyle = COLORS.approachRing; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(startX, startY, NOTE_RADIUS * sc, 0, Math.PI * 2); ctx.stroke()
+      ctx.strokeStyle = COLORS.approach; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(startX, startY, NOTE_RADIUS * sc, 0, Math.PI * 2); ctx.stroke()
     }
+
+    // 发光
+    const gp = Math.sin(Date.now() * 0.004) * 0.15 + 0.85
+    ctx.fillStyle = `rgba(255, 215, 0, ${0.3 * gp})`; ctx.beginPath(); ctx.arc(startX, startY, NOTE_RADIUS + 12, 0, Math.PI * 2); ctx.fill()
+
+    // 起点圆（金色）
+    const sg = ctx.createRadialGradient(startX - 3, startY - 3, 0, startX, startY, NOTE_RADIUS)
+    sg.addColorStop(0, '#fff8dc'); sg.addColorStop(0.7, COLORS.hold); sg.addColorStop(1, '#b8860b')
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(startX, startY, NOTE_RADIUS, 0, Math.PI * 2); ctx.fill()
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.stroke()
+
+    // "空格" 提示
+    ctx.font = 'bold 11px Inter, sans-serif'; ctx.textAlign = 'center'
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.9)'; ctx.fillText('按住空格', startX, startY - NOTE_RADIUS - 12)
+
+    ctx.globalAlpha = 1
+    return
   }
 
-  // 起点圆（大 + 脉冲光环）
-  const pulse = Math.sin(Date.now() * 0.005) * 3
-  const sg = ctx.createRadialGradient(x - 3, y - 3, 0, x, y, NOTE_RADIUS + pulse)
-  sg.addColorStop(0, isSlide ? '#e0ffe0' : '#e0f0ff')
-  sg.addColorStop(0.5, mainColor)
-  sg.addColorStop(1, isSlide ? '#208040' : '#2080c0')
-  ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS + pulse, 0, Math.PI * 2); ctx.fill()
-  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.stroke()
+  // 激活或已完成时：显示轨道
+  if (isActive || isCompleted) {
+    const progress = isActive ? holdProgress.value : 1
+    const currentEndY = startY + (endY - startY) * progress
 
-  // 起点脉冲光环
-  const rp = Math.sin(Date.now() * 0.008) * 0.3 + 0.7
-  ctx.strokeStyle = `${mainColor}${Math.round(rp * 80).toString(16).padStart(2, '0')}`; ctx.lineWidth = 2
-  ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS + 18 + Math.sin(Date.now() * 0.006) * 5, 0, Math.PI * 2); ctx.stroke()
+    // 轨道背景
+    ctx.shadowColor = COLORS.hold; ctx.shadowBlur = 15
+    ctx.strokeStyle = COLORS.holdTrack; ctx.lineWidth = 28; ctx.lineCap = 'round'
+    ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(startX, currentEndY); ctx.stroke()
+    ctx.shadowBlur = 0
 
-  // 终点圆
-  const lastPt = points[points.length - 1]
-  ctx.fillStyle = mainColor; ctx.beginPath(); ctx.arc(lastPt.x, lastPt.y, 12, 0, Math.PI * 2); ctx.fill()
-  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.stroke()
+    // 轨道边线
+    ctx.strokeStyle = COLORS.hold; ctx.lineWidth = 2; ctx.globalAlpha = alpha * 0.6
+    ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(startX, currentEndY); ctx.stroke()
+    ctx.globalAlpha = alpha
 
-  // 终点箭头
-  if (points.length >= 2) {
-    const prev = points[points.length - 2]
-    const angle = Math.atan2(lastPt.y - prev.y, lastPt.x - prev.x)
-    ctx.save(); ctx.translate(lastPt.x, lastPt.y); ctx.rotate(angle)
-    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath()
-    ctx.moveTo(12, 0); ctx.lineTo(-4, -7); ctx.lineTo(-4, 7); ctx.closePath(); ctx.fill()
-    ctx.restore()
+    // 流动发光点
+    const ft = Date.now() * 0.003
+    for (let i = 0; i < 3; i++) {
+      const t = (ft + i * 0.33) % 1
+      const py = startY + (currentEndY - startY) * t
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.6 - i * 0.15})`
+      ctx.beginPath(); ctx.arc(startX, py, 3 - i * 0.5, 0, Math.PI * 2); ctx.fill()
+    }
+
+    // 起点圆
+    const sg = ctx.createRadialGradient(startX - 3, startY - 3, 0, startX, startY, NOTE_RADIUS)
+    sg.addColorStop(0, '#fff8dc'); sg.addColorStop(0.7, COLORS.hold); sg.addColorStop(1, '#b8860b')
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(startX, startY, NOTE_RADIUS, 0, Math.PI * 2); ctx.fill()
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.stroke()
+
+    // 终点圆
+    ctx.fillStyle = COLORS.hold; ctx.beginPath(); ctx.arc(startX, endY, 10, 0, Math.PI * 2); ctx.fill()
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1.5; ctx.stroke()
+
+    // 进度条
+    ctx.fillStyle = `rgba(255, 215, 0, 0.8)`
+    ctx.fillRect(startX + 20, startY, 4, (endY - startY) * progress)
+
+    ctx.globalAlpha = 1
   }
-
-  // 文字提示
-  ctx.font = 'bold 12px Inter, sans-serif'; ctx.textAlign = 'center'
-  ctx.fillStyle = 'rgba(255,255,255,0.9)'
-  ctx.fillText(isSlide ? '滑动跟随' : '长按跟随', x, y - NOTE_RADIUS - 14)
-
-  ctx.globalAlpha = 1
 }
 
-/**
- * 绘制粒子
- */
 function drawParticles(ctx: CanvasRenderingContext2D) {
   particles = particles.filter(p => {
     p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life -= 0.025
@@ -260,23 +273,22 @@ function drawParticles(ctx: CanvasRenderingContext2D) {
     ctx.globalAlpha = p.life; ctx.fillStyle = p.color
     ctx.beginPath(); ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2); ctx.fill()
     return true
-  })
-  ctx.globalAlpha = 1
+  }); ctx.globalAlpha = 1
 }
 
-function drawClickRipples(ctx: CanvasRenderingContext2D) {
+function drawRipples(ctx: CanvasRenderingContext2D) {
   clickRipples = clickRipples.filter(r => {
     r.life -= 0.04; if (r.life <= 0) return false
-    const radius = (1 - r.life) * 80
+    const rad = (1 - r.life) * 80
     ctx.strokeStyle = r.color; ctx.lineWidth = 3 * r.life; ctx.globalAlpha = r.life * 0.8
-    ctx.beginPath(); ctx.arc(r.x, r.y, radius, 0, Math.PI * 2); ctx.stroke()
-    ctx.lineWidth = 1.5 * r.life; ctx.beginPath(); ctx.arc(r.x, r.y, radius * 0.5, 0, Math.PI * 2); ctx.stroke()
+    ctx.beginPath(); ctx.arc(r.x, r.y, rad, 0, Math.PI * 2); ctx.stroke()
+    ctx.lineWidth = 1.5 * r.life; ctx.beginPath(); ctx.arc(r.x, r.y, rad * 0.5, 0, Math.PI * 2); ctx.stroke()
     ctx.globalAlpha = 1; return true
   })
 }
 
-function drawJudgmentTexts(ctx: CanvasRenderingContext2D) {
-  judgmentTexts = judgmentTexts.filter(t => {
+function drawJTexts(ctx: CanvasRenderingContext2D) {
+  jTexts = jTexts.filter(t => {
     t.life -= 0.025; t.y -= 1.2; t.scale = Math.max(1, t.scale - 0.02)
     if (t.life <= 0) return false
     ctx.save(); ctx.globalAlpha = Math.min(1, t.life * 2)
@@ -284,10 +296,6 @@ function drawJudgmentTexts(ctx: CanvasRenderingContext2D) {
     ctx.shadowColor = t.color; ctx.shadowBlur = 20; ctx.fillStyle = t.color; ctx.fillText(t.text, t.x, t.y)
     ctx.restore(); return true
   })
-}
-
-function drawComboNumbers(ctx: CanvasRenderingContext2D) {
-  judgmentTexts = judgmentTexts.filter(t => true) // already handled above
 }
 
 /**
@@ -300,47 +308,53 @@ function render() {
   if (!ctx) { animFrameId = requestAnimationFrame(render); return }
 
   canvasWidth = canvas.width; canvasHeight = canvas.height
-  const currentTime = audioStore.currentTime
+  const ct = audioStore.currentTime
 
-  drawBackground(ctx, canvasWidth, canvasHeight)
+  drawBg(ctx, canvasWidth, canvasHeight)
 
   // 绘制音符
-  if (gameStore.notes.length > 0) {
-    gameStore.notes.forEach(note => {
-      const td = note.time - currentTime
-      if (td > -500 && td < 2500) {
-        if (note.type === 'circle') drawCircle(ctx, note, currentTime)
-        else drawTrack(ctx, note, currentTime, note.type === 'slide')
-      }
-    })
-  }
+  gameStore.notes.forEach(note => {
+    const td = note.time - ct
+    if (td > -500 && td < 2500) {
+      if (note.type === 'circle') drawCircle(ctx, note, ct)
+      else drawHold(ctx, note, ct)
+    }
+  })
 
   drawParticles(ctx)
-  drawClickRipples(ctx)
-  drawJudgmentTexts(ctx)
+  drawRipples(ctx)
+  drawJTexts(ctx)
 
-  // Miss
+  // Miss 检测
   if (gameStore.state === 'playing') {
     const processed = gameStore.processedNotes
     if (processed) {
       gameStore.notes.forEach(note => {
         if (note.type === 'circle' && !processed.has(note.id)) {
-          if (currentTime - note.time > 150) {
+          if (ct - note.time > 150) {
             gameStore.handleMiss(note.id)
-            playClickSound('miss')
-            addJudgmentText('miss', note.x * canvasWidth, note.y * canvasHeight)
+            playHitSound('miss')
+            addJText('miss', note.x * canvasWidth, note.y * canvasHeight)
+          }
+        }
+        // Hold 音符超时未按空格
+        if (note.type === 'hold' && note.endTime && !processed.has(note.id)) {
+          if (ct - note.endTime > 150) {
+            gameStore.handleMiss(note.id)
+            playHitSound('miss')
+            addJText('miss', note.x * canvasWidth, note.y * canvasHeight)
           }
         }
       })
     }
-    if (currentTime >= audioStore.duration && audioStore.duration > 0) gameStore.endGame()
+    if (ct >= audioStore.duration && audioStore.duration > 0) gameStore.endGame()
   }
 
   animFrameId = requestAnimationFrame(render)
 }
 
 /**
- * 点击处理
+ * 鼠标点击（Circle 音符）
  */
 function handleClick(e: MouseEvent) {
   if (gameStore.state !== 'playing') return
@@ -348,56 +362,114 @@ function handleClick(e: MouseEvent) {
   if (!canvas) return
 
   const rect = canvas.getBoundingClientRect()
-  const clickX = (e.clientX - rect.left) * (canvas.width / rect.width)
-  const clickY = (e.clientY - rect.top) * (canvas.height / rect.height)
-  const currentTime = audioStore.currentTime
+  const cx = (e.clientX - rect.left) * (canvas.width / rect.width)
+  const cy = (e.clientY - rect.top) * (canvas.height / rect.height)
+  const ct = audioStore.currentTime
   const processed = gameStore.processedNotes
 
-  // 查找 Circle 音符
-  let closestCircle: Note | null = null
-  let closestDist = Infinity
-
+  let closest: Note | null = null, closestDist = Infinity
   gameStore.notes.forEach(note => {
     if (note.type !== 'circle') return
-    if (processed && processed.has(note.id)) return
+    if (processed?.has(note.id)) return
     const nx = note.x * canvasWidth, ny = note.y * canvasHeight
-    const dist = Math.sqrt((clickX - nx) ** 2 + (clickY - ny) ** 2)
-    const td = Math.abs(note.time - currentTime)
-    if (dist < HIT_RADIUS && td < 200 && dist < closestDist) {
-      closestDist = dist; closestCircle = note
-    }
+    const dist = Math.sqrt((cx - nx) ** 2 + (cy - ny) ** 2)
+    const td = Math.abs(note.time - ct)
+    if (dist < HIT_RADIUS && td < 200 && dist < closestDist) { closestDist = dist; closest = note }
   })
 
-  if (closestCircle) {
-    const result = gameStore.handleHit(closestCircle.id, currentTime, closestCircle.time, closestCircle.x, closestCircle.y)
-    const nx = closestCircle.x * canvasWidth, ny = closestCircle.y * canvasHeight
-    if (result) {
-      playClickSound(result.type)
-      spawnHitParticles(nx, ny, COLORS.circle, result.type === 'perfect' ? 18 : 12)
-      addJudgmentText(result.type, nx, ny - 50)
-    }
-    addClickRipple(nx, ny, result ? { perfect: '#ffd700', great: '#4a9eff', good: '#4caf50', miss: '#ff5252' }[result.type] : '#fff')
+  if (closest) {
+    const result = gameStore.handleHit(closest.id, ct, closest.time, closest.x, closest.y)
+    const nx = closest.x * canvasWidth, ny = closest.y * canvasHeight
+    if (result) { playHitSound(result.type); spawnParticles(nx, ny, COLORS.circle, result.type === 'perfect' ? 18 : 12); addJText(result.type, nx, ny - 50) }
+    addClickRipple(nx, ny, result ? { perfect: '#ffd700', great: '#4a9eff', good: '#4caf50', miss: '#ff5252' }[result!.type] : '#fff')
   } else {
-    // 查找 Hold/Slide 起点
-    let closestTrack: Note | null = null
-    let closestTrackDist = Infinity
-    gameStore.notes.forEach(note => {
-      if (note.type === 'circle') return
-      if (processed && processed.has(note.id)) return
-      const nx = note.x * canvasWidth, ny = note.y * canvasHeight
-      const dist = Math.sqrt((clickX - nx) ** 2 + (clickY - ny) ** 2)
-      const td = Math.abs(note.time - currentTime)
-      if (dist < HIT_RADIUS && td < 200 && dist < closestTrackDist) {
-        closestTrackDist = dist; closestTrack = note
-      }
-    })
-    if (closestTrack) {
-      gameStore.handleHit(closestTrack.id, currentTime, closestTrack.time, closestTrack.x, closestTrack.y)
-      playClickSound('click')
-      addClickRipple(closestTrack.x * canvasWidth, closestTrack.y * canvasHeight, COLORS.hold)
-    } else {
-      addClickRipple(clickX, clickY, 'rgba(255,255,255,0.3)')
-    }
+    addClickRipple(cx, cy, 'rgba(255,255,255,0.3)')
+  }
+}
+
+/**
+ * 空格键处理（Hold 音符）
+ */
+function handleKeyDown(e: KeyboardEvent) {
+  if (e.code !== 'Space' || e.repeat) return
+  e.preventDefault()
+  if (gameStore.state !== 'playing' || spaceDown) return
+
+  spaceDown = true
+  const ct = audioStore.currentTime
+  const processed = gameStore.processedNotes
+
+  // 查找最近的 Hold 音符
+  let closest: Note | null = null, closestDist = Infinity
+  gameStore.notes.forEach(note => {
+    if (note.type !== 'hold') return
+    if (processed?.has(note.id)) return
+    const td = Math.abs(note.time - ct)
+    if (td < 200 && td < closestDist) { closestDist = td; closest = note }
+  })
+
+  if (closest) {
+    activeHoldNote = closest
+    holdStartTime = ct
+    holdProgress.value = 0
+    gameStore.handleHit(closest.id, ct, closest.time, closest.x, closest.y)
+    playHoldStart()
+    addClickRipple(closest.x * canvasWidth, closest.y * canvasHeight, COLORS.hold)
+  }
+}
+
+function handleKeyUp(e: KeyboardEvent) {
+  if (e.code !== 'Space') return
+  e.preventDefault()
+  if (!spaceDown || !activeHoldNote) { spaceDown = false; return }
+
+  spaceDown = false
+  const ct = audioStore.currentTime
+  const note = activeHoldNote
+
+  // 判定 Hold 完成
+  if (note.endTime) {
+    const holdDuration = ct - holdStartTime
+    const expectedDuration = note.endTime - note.time
+    const coverage = holdDuration / expectedDuration
+
+    let type = 'miss'
+    if (coverage >= 0.9) type = 'perfect'
+    else if (coverage >= 0.7) type = 'great'
+    else if (coverage >= 0.5) type = 'good'
+
+    const result = gameStore.handleHit(note.id, ct, note.time, note.x, note.y)
+    playHitSound(type)
+    spawnParticles(note.x * canvasWidth, note.y * canvasHeight, COLORS.hold, type === 'perfect' ? 18 : 12)
+    addJText(type, note.x * canvasWidth, note.y * canvasHeight - 50)
+  }
+
+  activeHoldNote = null
+  holdProgress.value = 0
+}
+
+function updateHoldProgress() {
+  if (!activeHoldNote || !activeHoldNote.endTime) return
+  const ct = audioStore.currentTime
+  const elapsed = ct - holdStartTime
+  const total = activeHoldNote.endTime - activeHoldNote.time
+  holdProgress.value = Math.min(1, elapsed / total)
+
+  // 播放进度音效
+  if (Math.floor(holdProgress.value * 10) > Math.floor((holdProgress.value - 0.02) * 10)) {
+    playHoldProgress()
+  }
+
+  // 到达终点
+  if (holdProgress.value >= 1) {
+    playHoldEnd()
+    const note = activeHoldNote
+    gameStore.handleHit(note.id, ct, note.time, note.x, note.y)
+    spawnParticles(note.x * canvasWidth, note.y * canvasHeight, COLORS.hold, 18)
+    addJText('perfect', note.x * canvasWidth, note.y * canvasHeight - 50)
+    activeHoldNote = null
+    holdProgress.value = 0
+    spaceDown = false
   }
 }
 
@@ -409,7 +481,11 @@ function resizeCanvas() {
 }
 
 onMounted(() => {
-  resizeCanvas(); window.addEventListener('resize', resizeCanvas)
+  resizeCanvas()
+  window.addEventListener('resize', resizeCanvas)
+  window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('keyup', handleKeyUp)
+
   if (gameStore.currentMapId) {
     import('@/utils/api').then(({ default: api }) => {
       api.get(`/api/maps/${gameStore.currentMapId}`).then(res => {
@@ -417,12 +493,22 @@ onMounted(() => {
       })
     })
   }
+
+  // Hold 进度更新循环
+  const progressLoop = () => {
+    updateHoldProgress()
+    requestAnimationFrame(progressLoop)
+  }
+  progressLoop()
+
   render()
 })
 
 onUnmounted(() => {
   if (animFrameId) cancelAnimationFrame(animFrameId)
   window.removeEventListener('resize', resizeCanvas)
+  window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('keyup', handleKeyUp)
 })
 </script>
 
