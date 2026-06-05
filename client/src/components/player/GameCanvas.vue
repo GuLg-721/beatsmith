@@ -244,26 +244,10 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   if (td < -500) return
 
   const holdDuration = note.endTime - note.time
-  // 轨道长度与持续时间成正比（恒定速度）
-  const PIXELS_PER_MS = 0.045
-  const rawTrackLen = holdDuration * PIXELS_PER_MS
-  const MIN_TRACK = 150
-  const MAX_TRACK = canvasHeight * 0.9 // 允许轨道几乎占满屏幕高度
-  const trackLen = Math.max(MIN_TRACK, Math.min(rawTrackLen, MAX_TRACK))
-
-  // 轨道方向：主要向下，根据起始位置微调
-  const startY = y
-  let endYCalc = startY + trackLen
-  // 边界控制：终点不超出视口底部
-  const margin = 50
-  if (endYCalc > canvasHeight - margin) {
-    endYCalc = canvasHeight - margin
-  }
-  const endX = x + (x > canvasWidth / 2 ? -1 : 1) * trackLen * 0.08
-  const endY = endYCalc
-
-  const clampedEndY = endY
-  const clampedEndX = endX
+  const margin = 40
+  const availH = canvasHeight - y - margin
+  const endY = Math.min(y + holdDuration * 0.04, y + availH, canvasHeight - margin)
+  const endX = x + (x > canvasWidth / 2 ? -1 : 1) * 25
 
   let alpha = 1
   if (td > 1200) alpha = Math.max(0, 1 - (td - 1200) / 600)
@@ -301,17 +285,14 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   if (isActive || isCompleted) {
     const progress = isActive ? holdProgress.value : 1
 
-    // 弧形控制点（简化版，更稳定）
-    const midY = (y + clampedEndY) / 2
-    const curveOffset = Math.min(trackLen * 0.15, 60) // 弧度与长度成比例，最大 60px
-    const curveX = x + curveOffset
-    const curveY = midY
+    const midX = (x + endX) / 2 + 15
+    const midY = (y + endY) / 2
 
     const getPoint = (t: number) => {
       const mt = 1 - t
       return {
-        x: mt * mt * x + 2 * mt * t * curveX + t * t * clampedEndX,
-        y: mt * mt * y + 2 * mt * t * curveY + t * t * clampedEndY
+        x: mt * mt * x + 2 * mt * t * midX + t * t * endX,
+        y: mt * mt * y + 2 * mt * t * midY + t * t * endY
       }
     }
 
