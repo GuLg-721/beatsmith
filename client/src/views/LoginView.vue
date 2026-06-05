@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
-import ParticleBackground from '@/components/common/ParticleBackground.vue'
+import AuroraBackground from '@/components/common/AuroraBackground.vue'
 import {
   NForm,
   NFormItem,
@@ -92,116 +92,121 @@ function toggleMode() {
 
 <template>
   <div class="login-page">
-    <ParticleBackground />
+    <AuroraBackground />
 
     <div class="login-container">
-      <Transition name="slide" mode="out-in">
-        <div class="login-card" :key="isLogin ? 'login' : 'register'">
-          <!-- Logo -->
-          <div class="logo">
-            <span class="logo-icon">⚒️</span>
-            <span class="logo-text">BeatSmith</span>
-          </div>
+      <Transition name="card-switch" mode="out-in">
+        <div class="login-card-wrapper" :key="isLogin ? 'login' : 'register'">
+          <div class="login-card">
+            <!-- 渐变边框光效 -->
+            <div class="gradient-border" />
 
-          <!-- Error Alert -->
-          <NAlert v-if="errorMsg" type="error" :title="errorMsg" closable @close="errorMsg = ''" class="error-alert" />
+            <!-- Logo -->
+            <div class="logo">
+              <span class="logo-icon">⚒️</span>
+              <span class="logo-text">BeatSmith</span>
+            </div>
 
-          <!-- Login Form -->
-          <NForm v-if="isLogin" ref="formRef" :model="form" :rules="rules" @submit.prevent="handleSubmit">
-            <NFormItem path="username" label="用户名">
-              <NInput
-                v-model:value="form.username"
-                placeholder="输入用户名"
+            <!-- Error Alert -->
+            <NAlert v-if="errorMsg" type="error" :title="errorMsg" closable @close="errorMsg = ''" class="error-alert" />
+
+            <!-- Login Form -->
+            <NForm v-if="isLogin" ref="formRef" :model="form" :rules="rules" @submit.prevent="handleSubmit">
+              <NFormItem path="username" label="用户名">
+                <NInput
+                  v-model:value="form.username"
+                  placeholder="输入用户名"
+                  :disabled="authStore.loading"
+                  class="neon-input"
+                />
+              </NFormItem>
+
+              <NFormItem path="password" label="密码">
+                <NInput
+                  v-model:value="form.password"
+                  type="password"
+                  show-password-on="click"
+                  placeholder="输入密码"
+                  :disabled="authStore.loading"
+                  class="neon-input"
+                />
+              </NFormItem>
+
+              <NButton
+                type="primary"
+                block
+                strong
+                :loading="authStore.loading"
                 :disabled="authStore.loading"
-                class="neon-input"
-              />
-            </NFormItem>
+                class="submit-btn"
+                @click="handleSubmit"
+              >
+                登录
+              </NButton>
+            </NForm>
 
-            <NFormItem path="password" label="密码">
-              <NInput
-                v-model:value="form.password"
-                type="password"
-                show-password-on="click"
-                placeholder="输入密码"
+            <!-- Register Form -->
+            <NForm v-else ref="formRef" :model="form" :rules="rules" @submit.prevent="handleSubmit">
+              <NFormItem path="username" label="用户名">
+                <NInput
+                  v-model:value="form.username"
+                  placeholder="3-20 位，字母数字下划线"
+                  :disabled="authStore.loading"
+                  class="neon-input"
+                />
+              </NFormItem>
+
+              <NFormItem path="nickname" label="昵称（可选）">
+                <NInput
+                  v-model:value="form.nickname"
+                  placeholder="显示名称"
+                  :disabled="authStore.loading"
+                  class="neon-input"
+                />
+              </NFormItem>
+
+              <NFormItem path="password" label="密码">
+                <NInput
+                  v-model:value="form.password"
+                  type="password"
+                  show-password-on="click"
+                  placeholder="至少 8 位，字母+数字"
+                  :disabled="authStore.loading"
+                  class="neon-input"
+                />
+              </NFormItem>
+
+              <NFormItem path="confirmPassword" label="确认密码">
+                <NInput
+                  v-model:value="form.confirmPassword"
+                  type="password"
+                  show-password-on="click"
+                  placeholder="再次输入密码"
+                  :disabled="authStore.loading"
+                  class="neon-input"
+                />
+              </NFormItem>
+
+              <NButton
+                type="primary"
+                block
+                strong
+                :loading="authStore.loading"
                 :disabled="authStore.loading"
-                class="neon-input"
-              />
-            </NFormItem>
+                class="submit-btn"
+                @click="handleSubmit"
+              >
+                注册
+              </NButton>
+            </NForm>
 
-            <NButton
-              type="primary"
-              block
-              strong
-              :loading="authStore.loading"
-              :disabled="authStore.loading"
-              class="submit-btn"
-              @click="handleSubmit"
-            >
-              登录
-            </NButton>
-          </NForm>
-
-          <!-- Register Form -->
-          <NForm v-else ref="formRef" :model="form" :rules="rules" @submit.prevent="handleSubmit">
-            <NFormItem path="username" label="用户名">
-              <NInput
-                v-model:value="form.username"
-                placeholder="3-20 位，字母数字下划线"
-                :disabled="authStore.loading"
-                class="neon-input"
-              />
-            </NFormItem>
-
-            <NFormItem path="nickname" label="昵称（可选）">
-              <NInput
-                v-model:value="form.nickname"
-                placeholder="显示名称"
-                :disabled="authStore.loading"
-                class="neon-input"
-              />
-            </NFormItem>
-
-            <NFormItem path="password" label="密码">
-              <NInput
-                v-model:value="form.password"
-                type="password"
-                show-password-on="click"
-                placeholder="至少 8 位，字母+数字"
-                :disabled="authStore.loading"
-                class="neon-input"
-              />
-            </NFormItem>
-
-            <NFormItem path="confirmPassword" label="确认密码">
-              <NInput
-                v-model:value="form.confirmPassword"
-                type="password"
-                show-password-on="click"
-                placeholder="再次输入密码"
-                :disabled="authStore.loading"
-                class="neon-input"
-              />
-            </NFormItem>
-
-            <NButton
-              type="primary"
-              block
-              strong
-              :loading="authStore.loading"
-              :disabled="authStore.loading"
-              class="submit-btn"
-              @click="handleSubmit"
-            >
-              注册
-            </NButton>
-          </NForm>
-
-          <!-- Toggle -->
-          <div class="toggle">
-            <span class="toggle-text">{{ isLogin ? '没有账号？' : '已有账号？' }}</span>
-            <button class="toggle-btn" @click="toggleMode" :disabled="authStore.loading">
-              {{ isLogin ? '立即注册' : '立即登录' }}
-            </button>
+            <!-- Toggle -->
+            <div class="toggle">
+              <span class="toggle-text">{{ isLogin ? '没有账号？' : '已有账号？' }}</span>
+              <button class="toggle-btn" @click="toggleMode" :disabled="authStore.loading">
+                {{ isLogin ? '立即注册' : '立即登录' }}
+              </button>
+            </div>
           </div>
         </div>
       </Transition>
@@ -230,19 +235,78 @@ function toggleMode() {
   gap: 1.5rem;
 }
 
+.login-card-wrapper {
+  perspective: 1000px;
+}
+
 .login-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  position: relative;
+  background: oklch(0.12 0.005 280 / 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 16px;
   padding: 2.5rem;
   width: 420px;
   max-width: 90vw;
-  transition: border-color 0.3s, box-shadow 0.3s;
+  overflow: hidden;
 }
 
-.login-card:focus-within {
-  border-color: var(--primary);
-  box-shadow: 0 0 30px oklch(0.62 0.22 350 / 0.15);
+/* 渐变边框光效 */
+.gradient-border {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    oklch(0.62 0.22 350) 0%,
+    oklch(0.78 0.15 195) 25%,
+    oklch(0.62 0.22 350) 50%,
+    oklch(0.78 0.15 195) 75%,
+    oklch(0.62 0.22 350) 100%
+  );
+  background-size: 300% 300%;
+  animation: gradientShift 6s ease-in-out infinite;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* 外层发光 */
+.login-card::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 18px;
+  background: linear-gradient(
+    135deg,
+    oklch(0.62 0.22 350 / 0.3),
+    oklch(0.78 0.15 195 / 0.3),
+    oklch(0.62 0.22 350 / 0.3)
+  );
+  background-size: 300% 300%;
+  animation: gradientShift 6s ease-in-out infinite;
+  z-index: -1;
+  filter: blur(15px);
+  opacity: 0.5;
+  transition: opacity 0.3s;
+}
+
+.login-card:hover::before {
+  opacity: 0.8;
 }
 
 .logo {
@@ -251,6 +315,8 @@ function toggleMode() {
   justify-content: center;
   gap: 0.5rem;
   margin-bottom: 2rem;
+  position: relative;
+  z-index: 2;
 }
 
 .logo-icon {
@@ -266,6 +332,13 @@ function toggleMode() {
 
 .error-alert {
   margin-bottom: 1.5rem;
+  position: relative;
+  z-index: 2;
+}
+
+:deep(.n-form-item) {
+  position: relative;
+  z-index: 2;
 }
 
 :deep(.n-form-item-label__text) {
@@ -273,18 +346,18 @@ function toggleMode() {
 }
 
 :deep(.n-input) {
-  --n-border: 1px solid var(--border) !important;
-  --n-border-hover: 1px solid var(--primary) !important;
+  --n-border: 1px solid oklch(0.25 0.005 280) !important;
+  --n-border-hover: 1px solid oklch(0.62 0.22 350 / 0.5) !important;
   --n-border-focus: 1px solid var(--primary) !important;
-  --n-color: var(--surface-2) !important;
+  --n-color: oklch(0.10 0.003 280) !important;
   --n-text-color: var(--ink) !important;
-  --n-placeholder-color: var(--muted) !important;
-  border-radius: var(--radius-sm) !important;
-  transition: all 0.3s !important;
+  --n-placeholder-color: oklch(0.45 0.005 280) !important;
+  border-radius: 8px !important;
+  transition: all 0.3s ease-out !important;
 }
 
 :deep(.n-input:focus-within) {
-  box-shadow: 0 0 15px oklch(0.62 0.22 350 / 0.2) !important;
+  box-shadow: 0 0 20px oklch(0.62 0.22 350 / 0.15) !important;
 }
 
 :deep(.n-button--primary-type) {
@@ -297,12 +370,19 @@ function toggleMode() {
   height: 44px !important;
   font-size: 1rem !important;
   font-weight: 600 !important;
-  border-radius: var(--radius-sm) !important;
-  transition: all 0.3s !important;
+  border-radius: 8px !important;
+  transition: all 0.3s ease-out !important;
+  position: relative;
+  z-index: 2;
 }
 
 :deep(.n-button--primary-type:hover) {
-  box-shadow: 0 0 20px oklch(0.62 0.22 350 / 0.3) !important;
+  box-shadow: 0 0 25px oklch(0.62 0.22 350 / 0.35) !important;
+  transform: translateY(-1px);
+}
+
+:deep(.n-button--primary-type:active) {
+  transform: translateY(0);
 }
 
 .toggle {
@@ -311,10 +391,12 @@ function toggleMode() {
   justify-content: center;
   gap: 0.5rem;
   margin-top: 1.5rem;
+  position: relative;
+  z-index: 2;
 }
 
 .toggle-text {
-  color: var(--muted);
+  color: oklch(0.55 0.005 280);
   font-size: 0.875rem;
 }
 
@@ -325,50 +407,62 @@ function toggleMode() {
   font-size: 0.875rem;
   font-family: inherit;
   cursor: pointer;
-  transition: color 0.2s;
+  transition: color 0.2s, text-shadow 0.2s;
 }
 
 .toggle-btn:hover {
   color: var(--accent-hover);
+  text-shadow: 0 0 10px oklch(0.78 0.15 195 / 0.4);
 }
 
 .back-link {
-  color: var(--muted);
+  color: oklch(0.50 0.005 280);
   font-size: 0.875rem;
   text-decoration: none;
   transition: color 0.2s;
+  position: relative;
+  z-index: 2;
 }
 
 .back-link:hover {
   color: var(--ink);
 }
 
-/* Slide transition */
-.slide-enter-active {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+/* Card switch transition */
+.card-switch-enter-active {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.slide-leave-active {
-  transition: all 0.2s ease-in;
+.card-switch-leave-active {
+  transition: all 0.25s ease-in;
 }
 
-.slide-enter-from {
+.card-switch-enter-from {
   opacity: 0;
-  transform: translateX(20px);
+  transform: rotateY(-8deg) translateX(30px) scale(0.96);
 }
 
-.slide-leave-to {
+.card-switch-leave-to {
   opacity: 0;
-  transform: translateX(-20px);
+  transform: rotateY(8deg) translateX(-30px) scale(0.96);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .slide-enter-active,
-  .slide-leave-active {
+  .gradient-border {
+    animation: none;
+  }
+
+  .login-card::before {
+    animation: none;
+  }
+
+  .card-switch-enter-active,
+  .card-switch-leave-active {
     transition: opacity 0.2s;
   }
-  .slide-enter-from,
-  .slide-leave-to {
+
+  .card-switch-enter-from,
+  .card-switch-leave-to {
     transform: none;
   }
 }
