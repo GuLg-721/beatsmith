@@ -51,9 +51,10 @@ export const useEditorStore = defineStore('editor', () => {
     beats: any[],
     bpm: number,
     mode: GenerateMode,
+    durationMs: number,
     customOptions?: CustomOptions
   ) {
-    notes.value = generateBeatmap(beats, bpm, mode, customOptions)
+    notes.value = generateBeatmap(beats, bpm, mode, durationMs, customOptions)
     undoStack.value = []
     redoStack.value = []
     isDirty.value = true
