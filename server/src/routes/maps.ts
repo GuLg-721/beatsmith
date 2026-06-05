@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { nanoid } from 'nanoid'
-import { getDB } from '../db'
+import { getDB, scheduleSave } from '../db'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
 
 const router = Router()
@@ -156,6 +156,7 @@ router.post('/', authMiddleware, (req: AuthRequest, res: Response) => {
         difficulty || 'Normal'
       ]
     )
+    scheduleSave()
 
     res.status(200).json({
       id,
@@ -199,6 +200,7 @@ router.put('/:id', authMiddleware, (req: AuthRequest, res: Response) => {
        WHERE id = ?`,
       [title, artist, coverImage, bpm, mapData, duration, difficulty, req.params.id]
     )
+    scheduleSave()
 
     res.status(200).json({ message: '谱面更新成功' })
   } catch (err) {
@@ -223,6 +225,7 @@ router.delete('/:id', authMiddleware, (req: AuthRequest, res: Response) => {
     }
 
     db.run('DELETE FROM beatmaps WHERE id = ?', [req.params.id])
+    scheduleSave()
     res.status(200).json({ message: '谱面删除成功' })
   } catch (err) {
     console.error('Delete map error:', err)

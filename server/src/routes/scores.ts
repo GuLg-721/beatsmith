@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import { getDB } from '../db'
+import { getDB, scheduleSave } from '../db'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
 
 const router = Router()
@@ -99,6 +99,7 @@ router.post('/:id/scores', authMiddleware, (req: AuthRequest, res: Response) => 
 
     // 增加游玩次数
     db.run('UPDATE beatmaps SET play_count = play_count + 1 WHERE id = ?', [req.params.id])
+    scheduleSave()
 
     res.status(200).json({ message: '分数提交成功' })
   } catch (err) {

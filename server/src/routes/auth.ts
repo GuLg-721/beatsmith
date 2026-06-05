@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
-import { getDB } from '../db'
+import { getDB, scheduleSave } from '../db'
 import { signToken } from '../utils/jwt'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
 
@@ -55,6 +55,7 @@ router.post('/register', async (req: Request, res: Response) => {
       hashedPassword,
       nickname || username
     ])
+    scheduleSave()
 
     // 获取新用户 ID
     const result = db.exec('SELECT last_insert_rowid() as id')

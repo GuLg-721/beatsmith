@@ -5,6 +5,7 @@ import path from 'path'
 const DB_PATH = path.join(__dirname, '..', 'data.db')
 
 let db: Database
+let saveTimeout: ReturnType<typeof setTimeout> | null = null
 
 export async function initDB(): Promise<Database> {
   const SQL = await initSqlJs()
@@ -12,6 +13,7 @@ export async function initDB(): Promise<Database> {
   if (existsSync(DB_PATH)) {
     const fileBuffer = readFileSync(DB_PATH)
     db = new SQL.Database(fileBuffer)
+    console.log('Database loaded from file')
   } else {
     db = new SQL.Database()
   }
@@ -64,14 +66,43 @@ export async function initDB(): Promise<Database> {
     )
   `)
 
+  // 创建默认管理员账号
+  createDefaultAdmin()
+
   saveDB()
   console.log('Database initialized')
   return db
 }
 
+function createDefaultAdmin() {
+  // 检查是否已有管理员
+  const result = db.exec("SELECT id FROM users WHERE username = 'admin'")
+  if (result.length > 0 && result[0].values.length > 0) {
+    return // 已存在
+  }
+
+  // 使用 bcryptjs 同步方法创建密码哈希
+  const bcrypt = require('bcryptjs')
+  const hashedPassword = bcrypt.hashSync('admin123', 10)
+
+  db.run(
+    "INSERT INTO users (username, password, nickname) VALUES (?, ?, ?)",
+    ['admin', hashedPassword, '管理员']
+  )
+  console.log('Default admin account created (admin / admin123)')
+}
+
 export function getDB(): Database {
   if (!db) throw new Error('Database not initialized')
   return db
+}
+
+// 防抖保存：写入后 500ms 自动保存，避免频繁 IO
+export function scheduleSave(): void {
+  if (saveTimeout) clearTimeout(saveTimeout)
+  saveTimeout = setTimeout(() => {
+    saveDB()
+  }, 500)
 }
 
 export function saveDB(): void {
