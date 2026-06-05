@@ -244,17 +244,23 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   if (td < -500) return
 
   const holdDuration = note.endTime - note.time
-  // 轨道长度与持续时间成正比（恒定速度：每 100ms 约 60px）
-  const PIXELS_PER_MS = 0.06
+  // 轨道长度与持续时间成正比（恒定速度）
+  const PIXELS_PER_MS = 0.045
   const rawTrackLen = holdDuration * PIXELS_PER_MS
-  const MIN_TRACK = 120
-  const MAX_TRACK = Math.min(canvasHeight * 0.7, 500)
+  const MIN_TRACK = 150
+  const MAX_TRACK = canvasHeight * 0.9 // 允许轨道几乎占满屏幕高度
   const trackLen = Math.max(MIN_TRACK, Math.min(rawTrackLen, MAX_TRACK))
 
-  // 根据轨道长度计算终点（主要向下，微调方向）
-  const angle = (Math.random() > 0.5 ? 1 : -1) * 0.2 // 轻微偏移
-  const endX = x + Math.sin(angle) * trackLen * 0.15
-  const endY = y + Math.cos(angle) * trackLen
+  // 轨道方向：主要向下，根据起始位置微调
+  const startY = y
+  let endYCalc = startY + trackLen
+  // 边界控制：终点不超出视口底部
+  const margin = 50
+  if (endYCalc > canvasHeight - margin) {
+    endYCalc = canvasHeight - margin
+  }
+  const endX = x + (x > canvasWidth / 2 ? -1 : 1) * trackLen * 0.08
+  const endY = endYCalc
 
   // 边界控制
   const margin = 60

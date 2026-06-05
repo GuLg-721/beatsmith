@@ -107,15 +107,15 @@ function fillGaps(notes: Note[], beats: Beat[], bpm: number) {
 }
 
 /**
- * 简单模式：Tap 50% / Circle 40% / Hold 10%
+ * 简单模式：Circle 50% / Tap 35% / Hold 15%
  */
 function generateSimple(beats: Beat[], dur: number, bpm: number): Note[] {
   const notes: Note[] = []
   const energyMap = analyzeBeats(beats, dur)
   let tapCluster = 0, lastHoldEnd = 0
   const intervalMs = 60000 / bpm
-  const targetTap = Math.floor(beats.length * 0.50)
-  const targetHold = Math.floor(beats.length * 0.10)
+  const targetTap = Math.floor(beats.length * 0.35)
+  const targetHold = Math.floor(beats.length * 0.15)
   let tapCount = 0, holdCount = 0
   const endingStart = dur * 0.85 // 结尾段起点
 
@@ -180,14 +180,14 @@ function generateSimple(beats: Beat[], dur: number, bpm: number): Note[] {
 }
 
 /**
- * 进阶模式：高潮多 Tap / Circle 50% / Tap 35% / Hold 15%
+ * 进阶模式：高潮多 Tap / Circle 55% / Tap 30% / Hold 15%
  */
 function generateAdvanced(beats: Beat[], dur: number, bpm: number): Note[] {
   const notes: Note[] = []
   const energyMap = analyzeBeats(beats, dur)
   let tapCluster = 0, lastHoldEnd = 0
   const intervalMs = 60000 / bpm
-  const targetTap = Math.floor(beats.length * 0.35)
+  const targetTap = Math.floor(beats.length * 0.30)
   const targetHold = Math.floor(beats.length * 0.15)
   let tapCount = 0, holdCount = 0
   const endingStart = dur * 0.85
@@ -325,7 +325,7 @@ export function generateBeatmap(
   switch (mode) {
     case 'simple': return generateSimple(beats, dur, bpm)
     case 'advanced': return generateAdvanced(beats, dur, bpm)
-    case 'custom': return generateCustom(beats, dur, customOptions || { density: 0.5, circleRatio: 0.4, tapRatio: 0.4, holdRatio: 0.2 })
+    case 'custom': return generateCustom(beats, dur, customOptions || { density: 0.5, circleRatio: 0.5, tapRatio: 0.3, holdRatio: 0.2 })
     default: return generateSimple(beats, dur, bpm)
   }
 }
