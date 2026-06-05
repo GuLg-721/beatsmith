@@ -45,55 +45,77 @@ function randomPosition(existingNotes: Note[]): { x: number; y: number } {
 }
 
 /**
- * 分析节拍能量，返回每个节拍的能量等级
- * 'high' = 鼓点多，适合 Tap
- * 'low' = 自然安静，适合 Circle
- * 'transition' = 能量变化大，适合 Hold
+ * 分析节拍能量
  */
 function analyzeBeatEnergy(beats: Beat[], durationMs: number): Map<number, 'high' | 'low' | 'transition'> {
   const energyMap = new Map<number, 'high' | 'low' | 'transition'>()
 
   if (beats.length < 2) return energyMap
 
-  // 计算平均强度
-  const avgStrength = beats.reduce((sum, b) => sum + b.strength, 0) / beats.length
+  const strengths = beats.map(b => b.strength)
+  const avgStrength = strengths.reduce((a, b) => a + b, 0) / strengths.length
+  const maxStrength = Math.max(...strengths)
+  const minStrength = Math.min(...strengths)
 
-  // 计算局部能量变化（滑动窗口）
-  const windowSize = Math.min(8, Math.floor(beats.length / 4))
+  console.log('Energy analysis:', { avg: avgStrength.toFixed(3), max: maxStrength.toFixed(3), min: minStrength.toFixed(3), range: (maxStrength - minStrength).toFixed(3) })
+
+  // 如果能量范围太小，强制分布
+  const range = maxStrength - minStrength
+  const useAdaptive = range < 0.1
+
+  const windowSize = Math.min(6, Math.floor(beats.length / 5))
 
   for (let i = 0; i < beats.length; i++) {
     const beat = beats[i]
+    const s = beat.strength
 
-    // 计算局部平均强度
+    // 局部能量
     const start = Math.max(0, i - windowSize)
     const end = Math.min(beats.length, i + windowSize + 1)
     const localAvg = beats.slice(start, end).reduce((sum, b) => sum + b.strength, 0) / (end - start)
 
-    // 计算能量变化率
-    const nextIdx = Math.min(i + 1, beats.length - 1)
-    const prevIdx = Math.max(0, i - 1)
-    const changeRate = Math.abs(beats[nextIdx].strength - beats[prevIdx].strength)
+    // 能量变化率
+    const nextS = beats[Math.min(i + 1, beats.length - 1)].strength
+    const prevS = beats[Math.max(0, i - 1)].strength
+    const changeRate = Math.abs(nextS - prevS)
 
-    // 歌曲结尾（最后 15%）
     const isEnding = beat.time > durationMs * 0.85
-
-    // 歌曲开头（前 5%）
     const isBeginning = beat.time < durationMs * 0.05
 
     if (isEnding) {
-      energyMap.set(i, 'transition') // 结尾用 Hold
+      energyMap.set(i, 'transition')
     } else if (isBeginning) {
-      energyMap.set(i, 'low') // 开头用 Circle
-    } else if (changeRate > 0.3) {
-      energyMap.set(i, 'transition') // 能量变化大 = 过渡段
-    } else if (localAvg > avgStrength * 1.2) {
-      energyMap.set(i, 'high') // 局部能量高 = 高潮
-    } else if (localAvg < avgStrength * 0.8) {
-      energyMap.set(i, 'low') // 局部能量低 = 安静
+      energyMap.set(i, 'low')
+    } else if (changeRate > 0.2) {
+      energyMap.set(i, 'transition')
+    } else if (useAdaptive) {
+      // 能量范围小时，用位置和随机来分布
+      const pos = i / beats.length
+      if (pos > 0.3 && pos < 0.7) {
+        energyMap.set(i, Math.random() < 0.4 ? 'high' : 'low')
+      } else {
+        energyMap.set(i, 'low')
+      }
     } else {
-      energyMap.set(i, 'low') // 默认 Circle
+      // 正常分布
+      if (s > avgStrength * 1.1) {
+        energyMap.set(i, 'high')
+      } else if (s < avgStrength * 0.9) {
+        energyMap.set(i, 'low')
+      } else {
+        energyMap.set(i, 'low')
+      }
     }
   }
+
+  // 统计
+  let highCount = 0, lowCount = 0, transCount = 0
+  energyMap.forEach(v => {
+    if (v === 'high') highCount++
+    else if (v === 'transition') transCount++
+    else lowCount++
+  })
+  console.log('Energy distribution:', { high: highCount, low: lowCount, transition: transCount })
 
   return energyMap
 }
