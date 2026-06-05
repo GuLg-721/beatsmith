@@ -191,13 +191,16 @@ function render() {
 
   // 检查 Miss（播放中且超时未击中）
   if (gameStore.state === 'playing') {
-    gameStore.notes.forEach(note => {
-      if (note.type === 'circle' && !gameStore.processedNotes.has(note.id)) {
-        if (currentTime - note.time > 150) {
-          gameStore.handleMiss(note.id)
+    const processed = gameStore.processedNotes
+    if (processed) {
+      gameStore.notes.forEach(note => {
+        if (note.type === 'circle' && !processed.has(note.id)) {
+          if (currentTime - note.time > 150) {
+            gameStore.handleMiss(note.id)
+          }
         }
-      }
-    })
+      })
+    }
 
     // 游戏结束
     if (currentTime >= audioStore.duration && audioStore.duration > 0) {
@@ -226,8 +229,9 @@ function handleClick(e: MouseEvent) {
   let closestNote: Note | null = null
   let closestDist = Infinity
 
+  const processed = gameStore.processedNotes
   gameStore.notes.forEach(note => {
-    if (gameStore.processedNotes.has(note.id)) return
+    if (processed && processed.has(note.id)) return
 
     const noteX = note.x * canvas.width
     const noteY = note.y * CANVAS_HEIGHT

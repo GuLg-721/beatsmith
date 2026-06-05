@@ -219,6 +219,7 @@ export const useGameStore = defineStore('game', () => {
     state,
     notes,
     currentMapId,
+    processedNotes,
     score,
     combo,
     maxCombo,
