@@ -13,6 +13,7 @@ export class AudioEngine {
   private pauseOffset = 0 // how far into the buffer we were when paused
   private _isPlaying = false
   private _isLoaded = false
+  private _lastLogTime = -1
 
   // 回调
   private onEndCallback: (() => void) | null = null
@@ -70,12 +71,22 @@ export class AudioEngine {
    * 播放
    */
   async play(onEnd?: () => void) {
-    if (!this.context || !this.buffer || this._isPlaying) return
+    if (!this.context || !this.buffer || this._isPlaying) {
+      console.log('AudioEngine.play() skipped:', {
+        hasContext: !!this.context,
+        hasBuffer: !!this.buffer,
+        isPlaying: this._isPlaying
+      })
+      return
+    }
 
     // 确保 AudioContext 已恢复（Chrome 自动播放策略）
     if (this.context.state === 'suspended') {
+      console.log('Resuming suspended AudioContext')
       await this.context.resume()
     }
+
+    console.log('AudioEngine.play() starting, context state:', this.context.state)
 
     this.sourceNode = this.context.createBufferSource()
     this.sourceNode.buffer = this.buffer
@@ -94,6 +105,7 @@ export class AudioEngine {
     this.sourceNode.start(0, this.pauseOffset)
     this.startTime = this.context.currentTime
     this._isPlaying = true
+    console.log('AudioEngine.play() started, startTime:', this.startTime, 'pauseOffset:', this.pauseOffset)
   }
 
   /**
@@ -148,7 +160,13 @@ export class AudioEngine {
   getCurrentTime(): number {
     if (!this.context) return 0
     if (!this._isPlaying) return this.pauseOffset * 1000
-    return (this.context.currentTime - this.startTime + this.pauseOffset) * 1000
+    const time = (this.context.currentTime - this.startTime + this.pauseOffset) * 1000
+    // 每秒只 log 一次，避免刷屏
+    if (Math.floor(time) % 5000 === 0 && Math.floor(time) !== this._lastLogTime) {
+      this._lastLogTime = Math.floor(time)
+      console.log('getCurrentTime:', time.toFixed(0), 'ms')
+    }
+    return time
   }
 
   /**
