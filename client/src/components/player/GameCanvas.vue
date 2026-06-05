@@ -241,20 +241,23 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   if (!note.endTime) return
   const x = note.x * canvasWidth, y = note.y * canvasHeight
   const td = note.time - ct
-  if (td < -500) return
+
+  const isActive = activeHoldNote?.id === note.id
+  const isCompleted = gameStore.processedNotes?.has(note.id)
+
+  // 未激活且已过期：不绘制
+  if (!isActive && !isCompleted && td < -500) return
 
   const holdDuration = note.endTime - note.time
   const margin = 40
   const availH = canvasHeight - y - margin
-  const endY = Math.min(y + holdDuration * 0.04, y + availH, canvasHeight - margin)
+  // 速度提高：每 100ms 约 8px
+  const endY = Math.min(y + holdDuration * 0.08, y + availH, canvasHeight - margin)
   const endX = x + (x > canvasWidth / 2 ? -1 : 1) * 25
 
   let alpha = 1
-  if (td > 1200) alpha = Math.max(0, 1 - (td - 1200) / 600)
+  if (td > 1200 && !isActive) alpha = Math.max(0, 1 - (td - 1200) / 600)
   ctx.globalAlpha = alpha
-
-  const isActive = activeHoldNote?.id === note.id
-  const isCompleted = gameStore.processedNotes?.has(note.id)
 
   // 未激活时：显示判定圈
   if (!isActive && !isCompleted) {
