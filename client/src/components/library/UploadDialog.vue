@@ -6,11 +6,8 @@ import {
   NFormItem,
   NInput,
   NButton,
-  NUpload,
-  NUploadDragger,
   NAlert,
 } from 'naive-ui'
-import type { UploadFileInfo } from 'naive-ui'
 import api from '@/utils/api'
 
 const props = defineProps<{
@@ -31,8 +28,24 @@ const form = ref({
   artist: ''
 })
 
-const audioFile = ref<UploadFileInfo | null>(null)
-const coverFile = ref<UploadFileInfo | null>(null)
+const audioFile = ref<File | null>(null)
+const coverFile = ref<File | null>(null)
+const audioInputRef = ref<HTMLInputElement | null>(null)
+const coverInputRef = ref<HTMLInputElement | null>(null)
+
+function handleAudioChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files && input.files[0]) {
+    audioFile.value = input.files[0]
+  }
+}
+
+function handleCoverChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files && input.files[0]) {
+    coverFile.value = input.files[0]
+  }
+}
 
 function handleClose() {
   emit('update:show', false)
@@ -61,7 +74,7 @@ async function handleUpload() {
   try {
     // 上传音频
     const audioFormData = new FormData()
-    audioFormData.append('audio', audioFile.value.file!)
+    audioFormData.append('audio', audioFile.value)
     const audioRes = await api.post('/api/upload/audio', audioFormData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
@@ -70,7 +83,7 @@ async function handleUpload() {
     let coverFilename = null
     if (coverFile.value) {
       const coverFormData = new FormData()
-      coverFormData.append('cover', coverFile.value.file!)
+      coverFormData.append('cover', coverFile.value)
       const coverRes = await api.post('/api/upload/cover', coverFormData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
@@ -126,41 +139,39 @@ async function handleUpload() {
         </NFormItem>
 
         <NFormItem label="音频文件" required>
-          <NUpload
-            :max="1"
-            accept=".mp3,.wav,.ogg,.flac"
-            :default-upload="false"
-            :disabled="loading"
-            @change="(files) => audioFile = files[0] || null"
-          >
-            <NUploadDragger>
-              <div class="upload-area">
-                <div class="upload-icon">🎵</div>
-                <div class="upload-text" v-if="!audioFile">点击选择或拖拽音频文件</div>
-                <div class="upload-text" v-else>{{ audioFile.name }}</div>
-                <div class="upload-hint">支持 MP3, WAV, OGG, FLAC（最大 50MB）</div>
-              </div>
-            </NUploadDragger>
-          </NUpload>
+          <div class="file-upload" @click="audioInputRef?.click()">
+            <input
+              ref="audioInputRef"
+              type="file"
+              accept=".mp3,.wav,.ogg,.flac"
+              style="display: none"
+              @change="handleAudioChange"
+            />
+            <div class="file-upload-content">
+              <div class="file-icon">🎵</div>
+              <div class="file-name" v-if="audioFile">{{ audioFile.name }}</div>
+              <div class="file-text" v-else>点击选择音频文件</div>
+              <div class="file-hint">MP3, WAV, OGG, FLAC（最大 50MB）</div>
+            </div>
+          </div>
         </NFormItem>
 
         <NFormItem label="封面图片（可选）">
-          <NUpload
-            :max="1"
-            accept=".jpg,.jpeg,.png,.webp"
-            :default-upload="false"
-            :disabled="loading"
-            @change="(files) => coverFile = files[0] || null"
-          >
-            <NUploadDragger>
-              <div class="upload-area">
-                <div class="upload-icon">🖼️</div>
-                <div class="upload-text" v-if="!coverFile">点击选择或拖拽封面图片</div>
-                <div class="upload-text" v-else>{{ coverFile.name }}</div>
-                <div class="upload-hint">支持 JPG, PNG, WebP（最大 5MB）</div>
-              </div>
-            </NUploadDragger>
-          </NUpload>
+          <div class="file-upload" @click="coverInputRef?.click()">
+            <input
+              ref="coverInputRef"
+              type="file"
+              accept=".jpg,.jpeg,.png,.webp"
+              style="display: none"
+              @change="handleCoverChange"
+            />
+            <div class="file-upload-content">
+              <div class="file-icon">🖼️</div>
+              <div class="file-name" v-if="coverFile">{{ coverFile.name }}</div>
+              <div class="file-text" v-else>点击选择封面图片</div>
+              <div class="file-hint">JPG, PNG, WebP（最大 5MB）</div>
+            </div>
+          </div>
         </NFormItem>
       </NForm>
 
@@ -231,28 +242,45 @@ async function handleUpload() {
   border-radius: 8px !important;
 }
 
-:deep(.n-upload-dragger) {
-  padding: 1.5rem !important;
-  border-radius: 8px !important;
+.file-upload {
+  width: 100%;
+  padding: 1.5rem;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  text-align: center;
 }
 
-.upload-area {
+.file-upload:hover {
+  border-color: oklch(0.62 0.22 350 / 0.4);
+  background: oklch(0.62 0.22 350 / 0.03);
+}
+
+.file-upload-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.375rem;
 }
 
-.upload-icon {
-  font-size: 2rem;
+.file-icon {
+  font-size: 1.75rem;
 }
 
-.upload-text {
+.file-name {
+  font-size: 0.875rem;
+  color: var(--primary);
+  font-weight: 500;
+  word-break: break-all;
+}
+
+.file-text {
   font-size: 0.875rem;
   color: var(--ink);
 }
 
-.upload-hint {
+.file-hint {
   font-size: 0.75rem;
   color: var(--muted);
 }
