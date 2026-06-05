@@ -32,8 +32,8 @@ const COLORS = {
   circleStroke: 'rgba(255, 100, 150, 1)',
   tap: 'rgba(255, 140, 0, 0.9)',
   tapStroke: 'rgba(255, 140, 0, 1)',
-  hold: 'rgba(100, 200, 255, 0.4)',
-  holdStroke: 'rgba(100, 200, 255, 0.8)',
+  hold: 'rgba(255, 215, 0, 0.4)',
+  holdStroke: 'rgba(255, 215, 0, 0.8)',
   selected: 'rgba(255, 255, 100, 0.9)',
   selectedGlow: 'rgba(255, 255, 100, 0.3)',
 }
@@ -280,14 +280,17 @@ function handleMouseDown(e: MouseEvent) {
     const yNorm = yToNorm(y)
 
     if (editorStore.activeTool !== 'select') {
+      console.log('Placing note with tool:', editorStore.activeTool)
       const newNote: Note = {
         id: nanoid(8),
-        type: editorStore.activeTool,
+        type: editorStore.activeTool as 'circle' | 'tap' | 'hold',
         time,
-        x: 0.5 + (Math.random() - 0.5) * 0.3, // 简单的位置
+        x: 0.5 + (Math.random() - 0.5) * 0.3,
         y: yNorm
       }
+      console.log('New note:', newNote)
       editorStore.addNote(newNote)
+      console.log('Notes count:', editorStore.notes.length)
     }
   }
 }
