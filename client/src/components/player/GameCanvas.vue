@@ -14,7 +14,7 @@ let canvasHeight = 0
 
 const NOTE_RADIUS = 22
 const HIT_RADIUS = 50
-const PERFECT_WINDOW = 30 // 放宽到 ±30ms
+const PERFECT_WINDOW = 40 // 与 HitDetector 一致
 
 // 空格键状态
 let spaceDown = false
@@ -301,31 +301,11 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   if (isActive || isCompleted) {
     const progress = isActive ? holdProgress.value : 1
 
-    // 多种随机贝塞尔曲线形态
-    const curveSeed = Math.abs(note.id.charCodeAt(0) + note.id.charCodeAt(1)) % 5
-    let curveX: number, curveY: number
-
-    switch (curveSeed) {
-      case 0: // S 形曲线
-        curveX = x + (clampedEndX - x) * 0.6 + 50
-        curveY = y + (clampedEndY - y) * 0.3
-        break
-      case 1: // 反 S 形
-        curveX = x + (clampedEndX - x) * 0.4 - 50
-        curveY = y + (clampedEndY - y) * 0.7
-        break
-      case 2: // 大弧形
-        curveX = x + (clampedEndX - x) * 0.5 + 80
-        curveY = y + (clampedEndY - y) * 0.5 - 30
-        break
-      case 3: // 小弧形
-        curveX = x + (clampedEndX - x) * 0.5 - 40
-        curveY = y + (clampedEndY - y) * 0.5 + 20
-        break
-      default: // 微弧
-        curveX = x + (clampedEndX - x) * 0.5 + 20
-        curveY = y + (clampedEndY - y) * 0.5
-    }
+    // 弧形控制点（简化版，更稳定）
+    const midY = (y + clampedEndY) / 2
+    const curveOffset = Math.min(trackLen * 0.15, 60) // 弧度与长度成比例，最大 60px
+    const curveX = x + curveOffset
+    const curveY = midY
 
     const getPoint = (t: number) => {
       const mt = 1 - t

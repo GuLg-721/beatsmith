@@ -11,17 +11,17 @@ export interface JudgmentResult {
   points: number
 }
 
-// 判定窗口（毫秒）
+// 判定窗口（毫秒）— 降低难度，让更多判定成功
 const WINDOWS = {
-  perfect: 20,
-  great: 50,
-  good: 100,
+  perfect: 40,   // ±40ms（从 20ms 放宽）
+  great: 80,     // ±80ms（从 50ms 放宽）
+  good: 140,     // ±140ms（从 100ms 放宽）
 }
 
 // 分数
 const POINTS: Record<JudgmentType, number> = {
   perfect: 300,
-  great: 100,
+  great: 150,    // 从 100 提高到 150
   good: 50,
   miss: 0,
 }
