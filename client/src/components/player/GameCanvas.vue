@@ -251,8 +251,8 @@ function drawHold(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   const holdDuration = note.endTime - note.time
   const margin = 40
   const availH = canvasHeight - y - margin
-  // 快节奏音游速度：每 100ms 约 15px
-  const endY = Math.min(y + holdDuration * 0.15, y + availH, canvasHeight - margin)
+  // 快节奏音游速度：每 100ms 约 20px
+  const endY = Math.min(y + holdDuration * 0.2, y + availH, canvasHeight - margin)
   const endX = x + (x > canvasWidth / 2 ? -1 : 1) * 25
 
   let alpha = 1
