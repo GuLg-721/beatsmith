@@ -73,12 +73,12 @@ async function handleSubmit() {
 }
 
 function toggleMode() {
+  isLogin.value = !isLogin.value
   errorMsg.value = ''
   form.username = ''
   form.nickname = ''
   form.password = ''
   form.confirmPassword = ''
-  isLogin.value = !isLogin.value
 }
 </script>
 
@@ -96,7 +96,7 @@ function toggleMode() {
         <NAlert v-if="errorMsg" type="error" :title="errorMsg" closable @close="errorMsg = ''" class="error-alert" />
 
         <!-- Login Form -->
-        <NForm v-show="isLogin" ref="formRef" :model="form" :rules="rules" @submit.prevent="handleSubmit" class="auth-form">
+        <NForm v-show="isLogin" ref="formRef" :model="form" :rules="rules" @submit.prevent="handleSubmit">
           <NFormItem path="username" label="用户名">
             <NInput v-model:value="form.username" placeholder="输入用户名" :disabled="authStore.loading" />
           </NFormItem>
@@ -109,7 +109,7 @@ function toggleMode() {
         </NForm>
 
         <!-- Register Form -->
-        <NForm v-show="!isLogin" :model="form" :rules="rules" @submit.prevent="handleSubmit" class="auth-form">
+        <NForm v-show="!isLogin" :model="form" :rules="rules" @submit.prevent="handleSubmit">
           <NFormItem path="username" label="用户名">
             <NInput v-model:value="form.username" placeholder="3-20 位，字母数字下划线" :disabled="authStore.loading" />
           </NFormItem>
@@ -135,7 +135,7 @@ function toggleMode() {
         </div>
       </div>
 
-      <a href="/" class="back-link">← 返回首页</a>
+      <router-link to="/" class="back-link">← 返回首页</router-link>
     </div>
   </div>
 </template>
@@ -195,23 +195,6 @@ function toggleMode() {
 }
 
 .error-alert { margin-bottom: 1.5rem; }
-
-/* 两个表单同时在 DOM 中，用 v-show 切换显示 */
-.auth-form {
-  /* 表单之间切换时的过渡 */
-  animation: formFade 0.25s ease;
-}
-
-@keyframes formFade {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 :deep(.n-form-item-label__text) {
   color: var(--muted) !important;
@@ -287,9 +270,5 @@ function toggleMode() {
 
 .back-link:hover {
   color: var(--ink);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .auth-form { animation: none; }
 }
 </style>
