@@ -12,7 +12,6 @@ const generateMode = ref<'simple' | 'advanced' | 'custom'>('simple')
 const customDensity = ref(0.5)
 const customCircle = ref(0.4)
 const customTap = ref(0.4)
-const customSpinner = ref(0.2)
 
 const snapOptions = [
   { label: '1/4', value: 4 },
@@ -23,7 +22,6 @@ const snapOptions = [
 const toolOptions = [
   { label: '🔴 Circle', value: 'circle' },
   { label: '🟠 Tap', value: 'tap' },
-  { label: '🟡 Spinner', value: 'spinner' },
   { label: '👆 选择', value: 'select' },
 ]
 
@@ -39,7 +37,6 @@ function handleGenerate() {
       density: customDensity.value,
       circleRatio: customCircle.value,
       tapRatio: customTap.value,
-      holdRatio: customSpinner.value,
     } : undefined
   )
 
@@ -115,7 +112,6 @@ function handleGenerate() {
           >
             <span class="mode-icon">🎵</span>
             <span class="mode-name">进阶</span>
-            <span class="mode-desc">重拍 Circle + 弱拍 Spinner</span>
           </button>
           <button
             class="mode-btn"
@@ -138,8 +134,6 @@ function handleGenerate() {
           <label>🟠 Tap: {{ (customTap * 100).toFixed(0) }}%</label>
           <input type="range" v-model.number="customTap" min="0" max="1" step="0.1" />
 
-          <label>🟡 Spinner: {{ (customSpinner * 100).toFixed(0) }}%</label>
-          <input type="range" v-model.number="customSpinner" min="0" max="1" step="0.1" />
         </div>
 
         <div class="modal-actions">

@@ -84,7 +84,6 @@ const spinnerAngle = ref(0)
 
 const COLORS = {
   circle: '#ff6496', circleGlow: 'rgba(255, 100, 150, 0.5)',
-  spinner: '#ffd700', spinnerGlow: 'rgba(255, 215, 0, 0.4)', spinnerTrack: 'rgba(255, 215, 0, 0.3)',
   tap: '#ff8c00', tapGlow: 'rgba(255, 140, 0, 0.5)',
   approach: 'rgba(255, 255, 255, 0.9)', approachRing: 'rgba(255, 255, 255, 0.4)',
 }
@@ -232,66 +231,7 @@ function drawTap(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
 /**
  * 绘制 Spinner 音符（金色，空格长按，弧形轨道）
  */
-function drawSpinner(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
-  if (!note.endTime) return
-  const x = note.x * canvasWidth, y = note.y * canvasHeight
-  const td = note.time - ct
 
-  const isActive = gameStore.activeSpinner?.id === note.id
-  const isCompleted = gameStore.processedNotes?.has(note.id)
-
-  // 活跃或已完成时始终绘制
-  if (!isActive && !isCompleted && td < -500) return
-  // 未激活未完成且未到时间：显示预览
-  if (!isActive && !isCompleted && td > 0) {
-    // 预览圈
-    const R = 55
-    ctx.globalAlpha = 0.6
-    ctx.strokeStyle = 'rgba(255, 215, 0, 0.4)'; ctx.lineWidth = 5
-    ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke()
-    // 旋转箭头预览
-    ctx.save(); ctx.translate(x, y); ctx.rotate(Date.now() * 0.002)
-    ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)'; ctx.lineWidth = 2.5
-    ctx.beginPath(); ctx.arc(0, 0, R - 10, 0, Math.PI * 1.2); ctx.stroke()
-    ctx.fillStyle = 'rgba(255, 215, 0, 0.6)'
-    ctx.beginPath(); ctx.moveTo(R - 10, -5); ctx.lineTo(R - 4, 0); ctx.lineTo(R - 10, 5); ctx.closePath(); ctx.fill()
-    ctx.restore()
-    ctx.font = 'bold 11px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-    ctx.fillStyle = 'rgba(255, 215, 0, 0.6)'; ctx.fillText('空格', x, y)
-    ctx.globalAlpha = 1
-    return
-  }
-
-  const duration = note.endTime - note.time
-  const requiredClicks = Math.floor(5 + (duration / 1000) * 4)
-  const progress = isActive ? Math.min(1, gameStore.spinnerClicks / requiredClicks) : (isCompleted ? 1 : 0)
-
-  const R = 55
-
-  // 外圈背景
-  ctx.strokeStyle = 'rgba(255, 215, 0, 0.2)'; ctx.lineWidth = 8
-  ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke()
-
-  // 进度弧
-  ctx.strokeStyle = COLORS.spinner; ctx.lineWidth = 8; ctx.lineCap = 'round'
-  ctx.beginPath(); ctx.arc(x, y, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress); ctx.stroke()
-
-  // 旋转箭头
-  const rotAngle = isActive ? spinnerAngle.value : 0
-  ctx.save(); ctx.translate(x, y); ctx.rotate(rotAngle)
-  ctx.strokeStyle = 'rgba(255, 215, 0, 0.9)'; ctx.lineWidth = 3
-  ctx.beginPath(); ctx.arc(0, 0, R - 14, 0, Math.PI * 1.3); ctx.stroke()
-  ctx.fillStyle = 'rgba(255, 215, 0, 0.9)'
-  ctx.beginPath(); ctx.moveTo(R - 14, -6); ctx.lineTo(R - 6, 0); ctx.lineTo(R - 14, 6); ctx.closePath(); ctx.fill()
-  ctx.restore()
-
-  // 中心数字
-  ctx.font = 'bold 22px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
-  ctx.fillText(`${gameStore.spinnerClicks}/${requiredClicks}`, x, y)
-
-  ctx.globalAlpha = 1
-}
 
 function drawParticles(ctx: CanvasRenderingContext2D) {
   particles = particles.filter(p => {
@@ -343,7 +283,7 @@ function render() {
     if (td > -500 && td < 2500) {
       if (note.type === 'circle') drawCircle(ctx, note, ct)
       else if (note.type === 'tap') drawTap(ctx, note, ct)
-      else if (note.type === 'spinner') drawSpinner(ctx, note, ct)
+      else if (note.type === 'spinner') drawCircle(ctx, note, ct)
     }
   })
 
@@ -421,7 +361,7 @@ function handleKeyDown(e: KeyboardEvent) {
     if (result === 'perfect') {
       const nx = gameStore.activeSpinner.x * canvasWidth
       const ny = gameStore.activeSpinner.y * canvasHeight
-      spawnParticles(nx, ny, COLORS.spinner, 18)
+      spawnParticles(nx, ny, COLORS.hold, 18)
       addJT('perfect', nx, ny - 50)
     }
     return
@@ -464,7 +404,7 @@ function handleKeyDown(e: KeyboardEvent) {
   if (spinnerNote) {
     gameStore.startSpinner(spinnerNote, ct)
     playTapSound()
-    addRipple(spinnerNote.x * canvasWidth, spinnerNote.y * canvasHeight, COLORS.spinner)
+    addRipple(spinnerNote.x * canvasWidth, spinnerNote.y * canvasHeight, COLORS.hold)
   }
 }
 

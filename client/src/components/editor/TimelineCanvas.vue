@@ -34,7 +34,6 @@ const COLORS = {
   circleStroke: 'rgba(255, 100, 150, 1)',
   tap: 'rgba(255, 140, 0, 0.9)',
   tapStroke: 'rgba(255, 140, 0, 1)',
-  spinnerStroke: 'rgba(255, 215, 0, 1)',
   hold: 'rgba(255, 215, 0, 0.4)',
   holdStroke: 'rgba(255, 215, 0, 0.8)',
   selected: 'rgba(255, 255, 100, 0.9)',
@@ -134,7 +133,6 @@ function drawNotes(ctx: CanvasRenderingContext2D, width: number) {
     const color = isSelected ? COLORS.selected : (
       note.type === 'circle' ? COLORS.circle :
       note.type === 'tap' ? COLORS.tap :
-      note.type === 'spinner' ? COLORS.holdStroke :
       COLORS.circle
     )
 
@@ -165,19 +163,6 @@ function drawNotes(ctx: CanvasRenderingContext2D, width: number) {
       ctx.fill(); ctx.stroke()
     }
 
-    if (note.type === 'spinner') {
-      // Spinner：圆形 + 旋转箭头图标
-      ctx.fillStyle = color
-      ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS, 0, Math.PI * 2); ctx.fill()
-      ctx.strokeStyle = COLORS.spinnerStroke; ctx.lineWidth = 2; ctx.stroke()
-      // 旋转箭头图标
-      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5
-      ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS * 0.6, 0, Math.PI * 1.2); ctx.stroke()
-      if (isSelected) {
-        ctx.strokeStyle = COLORS.selected; ctx.lineWidth = 2
-        ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS + 5, 0, Math.PI * 2); ctx.stroke()
-      }
-    }
   })
 }
 
@@ -232,7 +217,6 @@ function render() {
 
 /**
  * 查找点击位置的音符
- * Hold 音符：点击整个范围都能选中
  */
 function findNoteAtPosition(canvasX: number, canvasY: number): Note | null {
   for (let i = editorStore.notes.length - 1; i >= 0; i--) {
@@ -240,15 +224,6 @@ function findNoteAtPosition(canvasX: number, canvasY: number): Note | null {
     const x = timeToX(note.time)
     const y = normToY(note.y)
 
-    // Hold 音符：检查是否在时间范围内
-    if (note.type === 'spinner' && note.endTime) {
-      const endX = timeToX(note.endTime)
-      const inTimeRange = canvasX >= x - 10 && canvasX <= endX + 10
-      const inYRange = Math.abs(canvasY - y) < NOTE_RADIUS + 10
-      if (inTimeRange && inYRange) return note
-    }
-
-    // Circle/Tap 音符：检查距离
     const dx = canvasX - x
     const dy = canvasY - y
     const dist = Math.sqrt(dx * dx + dy * dy)
@@ -287,22 +262,6 @@ function handleMouseDown(e: MouseEvent) {
     dragNoteId = note.id
     dragStartX = x
     dragStartY = y
-
-    // Hold 音符：检测是否点击了端点（用于拉伸）
-    if (note.type === 'spinner' && note.endTime) {
-      const endX = timeToX(note.endTime)
-      const distToEnd = Math.abs(x - endX)
-      if (distToEnd < 15) {
-        dragIsResizing = true
-        dragOffsetTime = undefined
-      } else {
-        dragIsResizing = false
-        dragOffsetTime = note.endTime - note.time
-      }
-    } else {
-      dragIsResizing = false
-      dragOffsetTime = undefined
-    }
   } else {
     // 放置新音符
     editorStore.selectNote(null)
@@ -310,17 +269,13 @@ function handleMouseDown(e: MouseEvent) {
     const yNorm = yToNorm(y)
 
     if (editorStore.activeTool !== 'select') {
-      const noteType = editorStore.activeTool as 'circle' | 'tap' | 'spinner'
-      // Spinner 持续 2 拍（根据 BPM 计算）
-      const bpm = audioStore.estimatedBPM || 120
-      const spinnerDuration = (60000 / bpm) * 2 // 2 拍的毫秒数
+      const noteType = editorStore.activeTool as 'circle' | 'tap'
       const newNote: Note = {
         id: nanoid(8),
         type: noteType,
         time,
         x: 0.5 + (Math.random() - 0.5) * 0.3,
-        y: yNorm,
-        ...(noteType === 'spinner' ? { endTime: time + spinnerDuration } : {})
+        y: yNorm
       }
       editorStore.addNote(newNote)
     }
@@ -347,16 +302,7 @@ function handleMouseMove(e: MouseEvent) {
     const note = editorStore.notes.find(n => n.id === dragNoteId)
     if (note) {
       const newTime = snapTime(xToTime(x))
-      if (dragIsResizing && note.type === 'spinner' && note.endTime) {
-        // 拉伸 Hold 端点
-        note.endTime = Math.max(note.time + 100, newTime)
-      } else {
-        note.time = newTime
-        // Hold 音符：同步移动 endTime
-        if (note.type === 'spinner' && note.endTime && dragOffsetTime !== undefined) {
-          note.endTime = newTime + dragOffsetTime
-        }
-      }
+      note.time = newTime
     }
   }
 }
