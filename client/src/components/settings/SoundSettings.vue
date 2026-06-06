@@ -84,13 +84,34 @@ async function handleUpload(event: Event) {
 function playPreview() {
   const ctx = new AudioContext()
 
+  // 根据当前方案设置音效参数
+  const schemes: Record<string, { click: { freq: number; type: OscillatorType }; hit: { freq: number; type: OscillatorType }; grade: { freq: number; type: OscillatorType } }> = {
+    default: {
+      click: { freq: 800, type: 'sine' },
+      hit: { freq: 400, type: 'square' },
+      grade: { freq: 1200, type: 'triangle' }
+    },
+    electronic: {
+      click: { freq: 1200, type: 'sawtooth' },
+      hit: { freq: 200, type: 'sawtooth' },
+      grade: { freq: 1600, type: 'sine' }
+    },
+    mechanical: {
+      click: { freq: 600, type: 'square' },
+      hit: { freq: 150, type: 'sawtooth' },
+      grade: { freq: 800, type: 'triangle' }
+    }
+  }
+
+  const config = schemes[currentScheme.value] || schemes.default
+
   // Play click sound
   const osc1 = ctx.createOscillator()
   const gain1 = ctx.createGain()
   osc1.connect(gain1)
   gain1.connect(ctx.destination)
-  osc1.frequency.value = 800
-  osc1.type = 'sine'
+  osc1.frequency.value = config.click.freq
+  osc1.type = config.click.type
   gain1.gain.value = 0.3
   osc1.start()
   gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1)
@@ -101,8 +122,8 @@ function playPreview() {
   const gain2 = ctx.createGain()
   osc2.connect(gain2)
   gain2.connect(ctx.destination)
-  osc2.frequency.value = 400
-  osc2.type = 'square'
+  osc2.frequency.value = config.hit.freq
+  osc2.type = config.hit.type
   gain2.gain.value = 0.3
   osc2.start(ctx.currentTime + 0.15)
   gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25)
@@ -113,8 +134,8 @@ function playPreview() {
   const gain3 = ctx.createGain()
   osc3.connect(gain3)
   gain3.connect(ctx.destination)
-  osc3.frequency.value = 1200
-  osc3.type = 'triangle'
+  osc3.frequency.value = config.grade.freq
+  osc3.type = config.grade.type
   gain3.gain.value = 0.3
   osc3.start(ctx.currentTime + 0.3)
   gain3.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4)
