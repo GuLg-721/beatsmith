@@ -18,8 +18,6 @@ const PERFECT_WINDOW = 40 // 与 HitDetector 一致
 
 // 空格键状态
 let spaceDown = false
-let activeHoldNote: Note | null = null
-let holdStartTime = 0
 
 // 音效
 let clickAudioCtx: AudioContext | null = null
@@ -48,9 +46,6 @@ function playHitSound(type: string) {
   }
   const d = s[type]; if (d) playTone(d[0], d[1], 0.25, d[2], d[3])
 }
-function playHoldStart() { playTone(520, 0.06, 0.2, 'sine') }
-function playHoldProgress() { playTone(600, 0.03, 0.1, 'triangle') }
-function playHoldEnd() { playTone(880, 0.1, 0.3, 'sine', 1200) }
 function playTapSound() { playTone(750, 0.08, 0.25, 'sine', 1100) }
 
 // 波纹
@@ -89,7 +84,7 @@ const spinnerAngle = ref(0)
 
 const COLORS = {
   circle: '#ff6496', circleGlow: 'rgba(255, 100, 150, 0.5)',
-  hold: '#ffd700', holdGlow: 'rgba(255, 215, 0, 0.4)', holdTrack: 'rgba(255, 215, 0, 0.3)',
+  spinner: '#ffd700', spinnerGlow: 'rgba(255, 215, 0, 0.4)', spinnerTrack: 'rgba(255, 215, 0, 0.3)',
   tap: '#ff8c00', tapGlow: 'rgba(255, 140, 0, 0.5)',
   approach: 'rgba(255, 255, 255, 0.9)', approachRing: 'rgba(255, 255, 255, 0.4)',
 }
@@ -235,7 +230,7 @@ function drawTap(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
 }
 
 /**
- * 绘制 Hold 音符（金色，空格长按，弧形轨道）
+ * 绘制 Spinner 音符（金色，空格长按，弧形轨道）
  */
 function drawSpinner(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   if (!note.endTime) return
@@ -255,97 +250,71 @@ function drawSpinner(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   if (td > 1200 && !isActive) alpha = Math.max(0, 1 - (td - 1200) / 600)
   ctx.globalAlpha = alpha
 
-  // 未激活：判定圈
+  const R = 55 // 圈半径
+
+  // 未激活：判定圈 + 旋转预览
   if (!isActive && !isCompleted) {
     const ad = 1200
     if (td > 0 && td < ad) {
       const p = 1 - td / ad, sc = 3.5 - 2.5 * p
-      ctx.strokeStyle = COLORS.approachRing; ctx.lineWidth = 1.5
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1.5
       ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS * sc, 0, Math.PI * 2); ctx.stroke()
-      ctx.strokeStyle = COLORS.approach; ctx.lineWidth = 2.5
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2.5
       ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS * sc, 0, Math.PI * 2); ctx.stroke()
     }
+
     drawPerfectFlash(ctx, x, y, td)
 
-    // Spinner 图标（旋转的箭头）
-    ctx.save()
-    ctx.translate(x, y)
-    ctx.rotate(Date.now() * 0.003)
-    ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)'
-    ctx.lineWidth = 3
-    ctx.beginPath()
-    ctx.arc(0, 0, NOTE_RADIUS + 8, 0, Math.PI * 1.5)
-    ctx.stroke()
-    // 箭头
-    ctx.fillStyle = 'rgba(255, 215, 0, 0.8)'
-    ctx.beginPath()
-    ctx.moveTo(NOTE_RADIUS + 8, -5)
-    ctx.lineTo(NOTE_RADIUS + 14, 0)
-    ctx.lineTo(NOTE_RADIUS + 8, 5)
-    ctx.closePath()
-    ctx.fill()
+    // 外圈（待激活）
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)'; ctx.lineWidth = 6
+    ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke()
+
+    // 旋转预览箭头
+    ctx.save(); ctx.translate(x, y); ctx.rotate(Date.now() * 0.002)
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)'; ctx.lineWidth = 3
+    ctx.beginPath(); ctx.arc(0, 0, R - 12, 0, Math.PI * 1.2); ctx.stroke()
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.6)'
+    ctx.beginPath(); ctx.moveTo(R - 12, -6); ctx.lineTo(R - 5, 0); ctx.lineTo(R - 12, 6); ctx.closePath(); ctx.fill()
     ctx.restore()
 
-    // 中心点
-    ctx.fillStyle = COLORS.hold
-    ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS * 0.5, 0, Math.PI * 2); ctx.fill()
+    // 中心提示
+    ctx.font = 'bold 12px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.7)'
+    ctx.fillText('连点', x, y)
 
-    ctx.font = 'bold 11px Inter, sans-serif'; ctx.textAlign = 'center'
-    ctx.fillStyle = 'rgba(255, 215, 0, 0.9)'
-    ctx.fillText('连点空格', x, y - NOTE_RADIUS - 15)
     ctx.globalAlpha = 1
     return
   }
 
-  // 激活/已完成：旋转圈
-  const spinnerRadius = 50
-
-  // 外圈（进度环）
-  ctx.save()
-  ctx.strokeStyle = COLORS.holdTrack
-  ctx.lineWidth = 8
-  ctx.beginPath()
-  ctx.arc(x, y, spinnerRadius, 0, Math.PI * 2)
-  ctx.stroke()
+  // 激活/已完成：完整 Spinner
+  // 外圈背景
+  ctx.strokeStyle = 'rgba(255, 215, 0, 0.2)'; ctx.lineWidth = 8
+  ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke()
 
   // 进度弧
-  ctx.strokeStyle = COLORS.hold
-  ctx.lineWidth = 8
-  ctx.lineCap = 'round'
-  ctx.beginPath()
-  ctx.arc(x, y, spinnerRadius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress)
-  ctx.stroke()
-  ctx.restore()
+  ctx.strokeStyle = COLORS.spinner; ctx.lineWidth = 8; ctx.lineCap = 'round'
+  ctx.beginPath(); ctx.arc(x, y, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress); ctx.stroke()
 
-  // 旋转效果
-  const angle = isActive ? spinnerAngle.value : Math.PI * 2
-  ctx.save()
-  ctx.translate(x, y)
-  ctx.rotate(angle)
-
-  // 旋转箭头
-  ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)'
-  ctx.lineWidth = 3
-  ctx.beginPath()
-  ctx.arc(0, 0, spinnerRadius - 15, 0, Math.PI * 1.5)
-  ctx.stroke()
-
+  // 旋转箭头（激活时旋转）
+  const rotAngle = isActive ? spinnerAngle.value : Math.PI * 2
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rotAngle)
+  ctx.strokeStyle = 'rgba(255, 215, 0, 0.9)'; ctx.lineWidth = 3
+  ctx.beginPath(); ctx.arc(0, 0, R - 14, 0, Math.PI * 1.3); ctx.stroke()
   ctx.fillStyle = 'rgba(255, 215, 0, 0.9)'
-  ctx.beginPath()
-  ctx.moveTo(spinnerRadius - 15, -5)
-  ctx.lineTo(spinnerRadius - 9, 0)
-  ctx.lineTo(spinnerRadius - 15, 5)
-  ctx.closePath()
-  ctx.fill()
-
+  ctx.beginPath(); ctx.moveTo(R - 14, -6); ctx.lineTo(R - 6, 0); ctx.lineTo(R - 14, 6); ctx.closePath(); ctx.fill()
   ctx.restore()
 
   // 中心数字
-  ctx.font = 'bold 20px Inter, sans-serif'
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillStyle = isActive ? 'rgba(255, 215, 0, 0.9)' : 'rgba(255, 255, 255, 0.5)'
+  ctx.font = 'bold 22px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  ctx.fillStyle = isActive ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.5)'
   ctx.fillText(`${gameStore.spinnerClicks}/${requiredClicks}`, x, y)
+
+  // 完成时的特效
+  if (isCompleted && progress >= 1) {
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.4)'; ctx.lineWidth = 3
+    const burstR = R + 10 + Math.sin(Date.now() * 0.01) * 5
+    ctx.beginPath(); ctx.arc(x, y, burstR, 0, Math.PI * 2); ctx.stroke()
+  }
 
   ctx.globalAlpha = 1
 }
@@ -389,7 +358,6 @@ function render() {
   if (!ctx) { animFrameId = requestAnimationFrame(render); return }
 
   // 先更新 Hold 进度（在同一帧内）
-  updateHoldProgress()
 
   canvasWidth = canvas.width; canvasHeight = canvas.height
   const ct = audioStore.currentTime
@@ -466,6 +434,23 @@ function handleKeyDown(e: KeyboardEvent) {
   const ct = audioStore.currentTime
   const processed = gameStore.processedNotes
 
+  // 如果有活跃的 Spinner，允许重复点击
+  if (gameStore.activeSpinner) {
+    const result = gameStore.clickSpinner()
+    spinnerAngle.value += Math.PI / 3
+    playTapSound()
+    if (result === 'perfect') {
+      const nx = gameStore.activeSpinner.x * canvasWidth
+      const ny = gameStore.activeSpinner.y * canvasHeight
+      spawnParticles(nx, ny, COLORS.spinner, 18)
+      addJT('perfect', nx, ny - 50)
+    }
+    return
+  }
+
+  // Tap（不重复）
+  if (e.repeat) return
+
   // 查找 Tap
   let tapNote: Note | null = null, tapDist = Infinity
   gameStore.notes.forEach(note => {
@@ -484,7 +469,7 @@ function handleKeyDown(e: KeyboardEvent) {
     return
   }
 
-  // 查找 Spinner
+  // 查找 Spinner（启动）
   let spinnerNote: Note | null = null, spinnerDist = Infinity
   gameStore.notes.forEach(note => {
     if (note.type !== 'spinner') return
@@ -494,49 +479,15 @@ function handleKeyDown(e: KeyboardEvent) {
   })
 
   if (spinnerNote) {
-    // 开始或继续 spinner
-    if (!gameStore.activeSpinner) {
-      gameStore.startSpinner(spinnerNote, ct)
-      playTapSound()
-      addRipple(spinnerNote.x * canvasWidth, spinnerNote.y * canvasHeight, COLORS.hold)
-    } else {
-      // 点击 spinner
-      const result = gameStore.clickSpinner()
-      spinnerAngle.value += Math.PI / 3 // 每次点击旋转 60 度
-      playTapSound()
-
-      if (result === 'perfect') {
-        const nx = gameStore.activeSpinner!.x * canvasWidth
-        const ny = gameStore.activeSpinner!.y * canvasHeight
-        spawnParticles(nx, ny, COLORS.hold, 18)
-        addJT('perfect', nx, ny - 50)
-      }
-    }
+    gameStore.startSpinner(spinnerNote, ct)
+    playTapSound()
+    addRipple(spinnerNote.x * canvasWidth, spinnerNote.y * canvasHeight, COLORS.spinner)
   }
 }
 
 function handleKeyUp(e: KeyboardEvent) {
   if (e.code !== 'Space') return
   // Spinner 不需要 keyup 处理，点击即完成
-}
-
-function updateHoldProgress() {
-  if (!activeHoldNote || !activeHoldNote.endTime) return
-  const ct = audioStore.currentTime
-  const elapsed = ct - holdStartTime
-  const total = activeHoldNote.endTime - activeHoldNote.time
-  holdProgress.value = Math.min(1, elapsed / total)
-
-  if (Math.floor(holdProgress.value * 10) > Math.floor((holdProgress.value - 0.02) * 10)) playHoldProgress()
-
-  if (holdProgress.value >= 1) {
-    playHoldEnd()
-    const note = activeHoldNote
-    gameStore.handleHit(note.id, ct, note.time, note.x, note.y)
-    spawnParticles(note.x * canvasWidth, note.y * canvasHeight, COLORS.hold, 18)
-    addJT('perfect', note.x * canvasWidth, note.y * canvasHeight - 50)
-    activeHoldNote = null; holdProgress.value = 0; spaceDown = false
-  }
 }
 
 function resizeCanvas() {
@@ -555,7 +506,6 @@ onMounted(() => {
       })
     })
   }
-  render() // render 内部已经包含 updateHoldProgress
 })
 
 onUnmounted(() => {

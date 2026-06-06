@@ -310,15 +310,15 @@ function handleMouseDown(e: MouseEvent) {
     const yNorm = yToNorm(y)
 
     if (editorStore.activeTool !== 'select') {
-      const noteType = editorStore.activeTool as 'circle' | 'tap' | 'hold'
+      const noteType = editorStore.activeTool as 'circle' | 'tap' | 'spinner'
       const newNote: Note = {
         id: nanoid(8),
         type: noteType,
         time,
         x: 0.5 + (Math.random() - 0.5) * 0.3,
         y: yNorm,
-        // Hold 音符默认持续 500ms
-        ...(noteType === 'hold' ? { endTime: time + 500 } : {})
+        // Spinner 默认持续 2000ms
+        ...(noteType === 'spinner' ? { endTime: time + 2000 } : {})
       }
       editorStore.addNote(newNote)
     }
