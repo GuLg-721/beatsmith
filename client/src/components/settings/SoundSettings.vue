@@ -19,7 +19,6 @@ const customSounds = ref<{ click: string | null; hit: string | null; grade: stri
 })
 const uploading = ref(false)
 const fileInput = ref<HTMLInputElement>()
-const uploadType = ref<'click' | 'hit' | 'grade'>('click')
 
 onMounted(async () => {
   try {
@@ -49,8 +48,7 @@ async function saveSettings() {
   }
 }
 
-function triggerUpload(type: 'click' | 'hit' | 'grade') {
-  uploadType.value = type
+function triggerUpload() {
   fileInput.value?.click()
 }
 
@@ -73,7 +71,7 @@ async function handleUpload(event: Event) {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 
-    customSounds.value[uploadType.value] = res.data.url
+    customSounds.value.click = res.data.url
     saveSettings()
   } catch (err) {
     alert(err instanceof Error ? err.message : '上传失败')
@@ -83,29 +81,44 @@ async function handleUpload(event: Event) {
   }
 }
 
-function playPreview(type: 'click' | 'hit' | 'grade') {
+function playPreview() {
   const ctx = new AudioContext()
-  const oscillator = ctx.createOscillator()
-  const gainNode = ctx.createGain()
 
-  oscillator.connect(gainNode)
-  gainNode.connect(ctx.destination)
+  // Play click sound
+  const osc1 = ctx.createOscillator()
+  const gain1 = ctx.createGain()
+  osc1.connect(gain1)
+  gain1.connect(ctx.destination)
+  osc1.frequency.value = 800
+  osc1.type = 'sine'
+  gain1.gain.value = 0.3
+  osc1.start()
+  gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1)
+  osc1.stop(ctx.currentTime + 0.1)
 
-  if (type === 'click') {
-    oscillator.frequency.value = 800
-    oscillator.type = 'sine'
-  } else if (type === 'hit') {
-    oscillator.frequency.value = 400
-    oscillator.type = 'square'
-  } else {
-    oscillator.frequency.value = 1200
-    oscillator.type = 'triangle'
-  }
+  // Play hit sound
+  const osc2 = ctx.createOscillator()
+  const gain2 = ctx.createGain()
+  osc2.connect(gain2)
+  gain2.connect(ctx.destination)
+  osc2.frequency.value = 400
+  osc2.type = 'square'
+  gain2.gain.value = 0.3
+  osc2.start(ctx.currentTime + 0.15)
+  gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25)
+  osc2.stop(ctx.currentTime + 0.25)
 
-  gainNode.gain.value = 0.3
-  oscillator.start()
-  gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1)
-  oscillator.stop(ctx.currentTime + 0.1)
+  // Play grade sound
+  const osc3 = ctx.createOscillator()
+  const gain3 = ctx.createGain()
+  osc3.connect(gain3)
+  gain3.connect(ctx.destination)
+  osc3.frequency.value = 1200
+  osc3.type = 'triangle'
+  gain3.gain.value = 0.3
+  osc3.start(ctx.currentTime + 0.3)
+  gain3.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4)
+  osc3.stop(ctx.currentTime + 0.4)
 }
 </script>
 
@@ -124,31 +137,17 @@ function playPreview(type: 'click' | 'hit' | 'grade') {
       </button>
     </div>
 
-    <div class="custom-sounds">
-      <h4>自定义音效</h4>
-      <div class="sound-list">
-        <div class="sound-item">
-          <span>点击音效</span>
-          <button class="preview-btn" @click="playPreview('click')">预览</button>
-          <button class="upload-btn" @click="triggerUpload('click')" :disabled="uploading">
-            {{ customSounds.click ? '已上传' : '上传' }}
-          </button>
-        </div>
-        <div class="sound-item">
-          <span>打击音效</span>
-          <button class="preview-btn" @click="playPreview('hit')">预览</button>
-          <button class="upload-btn" @click="triggerUpload('hit')" :disabled="uploading">
-            {{ customSounds.hit ? '已上传' : '上传' }}
-          </button>
-        </div>
-        <div class="sound-item">
-          <span>评级音效</span>
-          <button class="preview-btn" @click="playPreview('grade')">预览</button>
-          <button class="upload-btn" @click="triggerUpload('grade')" :disabled="uploading">
-            {{ customSounds.grade ? '已上传' : '上传' }}
-          </button>
-        </div>
-      </div>
+    <div class="preview-section">
+      <button class="preview-btn" @click="playPreview">
+        🔊 预览音效
+      </button>
+    </div>
+
+    <div class="custom-sound">
+      <button class="upload-btn" @click="triggerUpload" :disabled="uploading">
+        {{ customSounds.click ? '✅ 已上传自定义音效' : '📤 上传自定义音效' }}
+      </button>
+      <p class="upload-hint">支持 MP3、WAV、OGG 格式，最大 1MB，时长建议 0.5 秒内</p>
     </div>
 
     <input
@@ -204,45 +203,42 @@ function playPreview(type: 'click' | 'hit' | 'grade') {
   color: var(--text-muted);
 }
 
-.custom-sounds h4 {
-  color: var(--text);
-  font-size: 0.9rem;
-  margin-bottom: 0.8rem;
+.preview-section {
+  text-align: center;
 }
 
-.sound-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.sound-item {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  padding: 0.6rem;
-  background: var(--bg-surface);
-  border-radius: 6px;
-}
-
-.sound-item span {
-  flex: 1;
-  color: var(--text);
-  font-size: 0.9rem;
-}
-
-.preview-btn, .upload-btn {
-  padding: 0.3rem 0.6rem;
+.preview-btn {
+  padding: 0.6rem 1.5rem;
   border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg-card);
-  color: var(--text-muted);
-  font-size: 0.8rem;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text);
   cursor: pointer;
   transition: all 0.2s;
+  font-size: 0.9rem;
 }
 
-.preview-btn:hover, .upload-btn:hover {
+.preview-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.custom-sound {
+  text-align: center;
+}
+
+.upload-btn {
+  padding: 0.6rem 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.upload-btn:hover:not(:disabled) {
   border-color: var(--primary);
   color: var(--primary);
 }
@@ -250,5 +246,11 @@ function playPreview(type: 'click' | 'hit' | 'grade') {
 .upload-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.upload-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
 }
 </style>
