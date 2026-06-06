@@ -8,7 +8,7 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
-const profileUser = ref<any>(null)
+const profileUser = computed(() => authStore.user)
 const loading = ref(true)
 const recentPlays = ref<any[]>([])
 
@@ -17,9 +17,6 @@ const isOwnProfile = computed(() => {
 })
 
 onMounted(async () => {
-  if (authStore.isLoggedIn) {
-    profileUser.value = authStore.user
-  }
   loading.value = false
 })
 
