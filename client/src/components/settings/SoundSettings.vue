@@ -81,6 +81,12 @@ async function handleUpload(event: Event) {
   }
 }
 
+function playCustomSound() {
+  if (!customSounds.value.click) return
+  const audio = new Audio(customSounds.value.click)
+  audio.play()
+}
+
 function playPreview() {
   const ctx = new AudioContext()
 
@@ -166,9 +172,19 @@ function playPreview() {
 
     <div class="custom-sound">
       <button class="upload-btn" @click="triggerUpload" :disabled="uploading">
-        {{ customSounds.click ? '✅ 已上传自定义音效' : '📤 上传自定义音效' }}
+        📤 上传自定义音效
       </button>
       <p class="upload-hint">支持 MP3、WAV、OGG 格式，最大 1MB，时长建议 0.5 秒内</p>
+    </div>
+
+    <div v-if="customSounds.click" class="uploaded-sound">
+      <div class="uploaded-info">
+        <span class="uploaded-icon">🎵</span>
+        <span class="uploaded-name">自定义点击音效</span>
+      </div>
+      <button class="preview-uploaded-btn" @click="playCustomSound">
+        🔊 预览
+      </button>
     </div>
 
     <input
@@ -273,5 +289,45 @@ function playPreview() {
   font-size: 0.75rem;
   color: var(--text-muted);
   margin-top: 0.5rem;
+}
+
+.uploaded-sound {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.uploaded-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.uploaded-icon {
+  font-size: 1.2rem;
+}
+
+.uploaded-name {
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.preview-uploaded-btn {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  background: rgba(var(--primary-rgb), 0.1);
+  color: var(--primary);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.85rem;
+}
+
+.preview-uploaded-btn:hover {
+  background: rgba(var(--primary-rgb), 0.2);
 }
 </style>

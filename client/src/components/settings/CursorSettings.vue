@@ -109,9 +109,21 @@ async function saveSettings() {
 
     <div class="custom-cursor">
       <button class="upload-btn" @click="triggerUpload" :disabled="uploading">
-        {{ customCursor ? '✅ 已上传自定义光标' : '📤 上传自定义光标' }}
+        📤 上传自定义光标
       </button>
       <p class="upload-hint">支持 PNG、SVG 格式，最大 100KB</p>
+    </div>
+
+    <div v-if="customCursor" class="uploaded-cursor">
+      <div class="uploaded-info">
+        <div class="uploaded-preview">
+          <img :src="customCursor" alt="custom cursor" />
+        </div>
+        <span class="uploaded-name">自定义光标</span>
+      </div>
+      <button class="select-uploaded-btn" @click="selectCursor('custom')">
+        ✓ 使用
+      </button>
     </div>
 
     <input
@@ -204,5 +216,54 @@ async function saveSettings() {
   font-size: 0.75rem;
   color: var(--text-muted);
   margin-top: 0.5rem;
+}
+
+.uploaded-cursor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.uploaded-info {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.uploaded-preview {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.uploaded-preview img {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.uploaded-name {
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.select-uploaded-btn {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  background: rgba(var(--primary-rgb), 0.1);
+  color: var(--primary);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.85rem;
+}
+
+.select-uploaded-btn:hover {
+  background: rgba(var(--primary-rgb), 0.2);
 }
 </style>
