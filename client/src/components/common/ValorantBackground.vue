@@ -185,43 +185,44 @@ onMounted(() => {
 
     // Draw corner accents with glow
     const cornerSize = 50
+    const cornerOffset = 45
     const cornerPulse = Math.sin(time * 1.5) * 0.1 + 0.4
 
     ctx!.lineCap = 'round'
 
     // Top-left
     ctx!.beginPath()
-    ctx!.moveTo(25, 25 + cornerSize)
-    ctx!.lineTo(25, 25)
-    ctx!.lineTo(25 + cornerSize, 25)
+    ctx!.moveTo(cornerOffset, cornerOffset + cornerSize)
+    ctx!.lineTo(cornerOffset, cornerOffset)
+    ctx!.lineTo(cornerOffset + cornerSize, cornerOffset)
     ctx!.strokeStyle = `rgba(255, 70, 85, ${cornerPulse})`
     ctx!.lineWidth = 3
     ctx!.stroke()
 
     // Top-right
     ctx!.beginPath()
-    ctx!.moveTo(canvas!.width - 25 - cornerSize, 25)
-    ctx!.lineTo(canvas!.width - 25, 25)
-    ctx!.lineTo(canvas!.width - 25, 25 + cornerSize)
+    ctx!.moveTo(canvas!.width - cornerOffset - cornerSize, cornerOffset)
+    ctx!.lineTo(canvas!.width - cornerOffset, cornerOffset)
+    ctx!.lineTo(canvas!.width - cornerOffset, cornerOffset + cornerSize)
     ctx!.stroke()
 
     // Bottom-left
     ctx!.beginPath()
-    ctx!.moveTo(25, canvas!.height - 25 - cornerSize)
-    ctx!.lineTo(25, canvas!.height - 25)
-    ctx!.lineTo(25 + cornerSize, canvas!.height - 25)
+    ctx!.moveTo(cornerOffset, canvas!.height - cornerOffset - cornerSize)
+    ctx!.lineTo(cornerOffset, canvas!.height - cornerOffset)
+    ctx!.lineTo(cornerOffset + cornerSize, canvas!.height - cornerOffset)
     ctx!.stroke()
 
     // Bottom-right
     ctx!.beginPath()
-    ctx!.moveTo(canvas!.width - 25 - cornerSize, canvas!.height - 25)
-    ctx!.lineTo(canvas!.width - 25, canvas!.height - 25)
-    ctx!.lineTo(canvas!.width - 25, canvas!.height - 25 - cornerSize)
+    ctx!.moveTo(canvas!.width - cornerOffset - cornerSize, canvas!.height - cornerOffset)
+    ctx!.lineTo(canvas!.width - cornerOffset, canvas!.height - cornerOffset)
+    ctx!.lineTo(canvas!.width - cornerOffset, canvas!.height - cornerOffset - cornerSize)
     ctx!.stroke()
 
     // Corner glow dots
     const dotSize = 4
-    const dotGlow = ctx!.createRadialGradient(25, 25, 0, 25, 25, dotSize * 3)
+    const dotGlow = ctx!.createRadialGradient(cornerOffset, cornerOffset, 0, cornerOffset, cornerOffset, dotSize * 3)
     dotGlow.addColorStop(0, `rgba(255, 70, 85, ${cornerPulse})`)
     dotGlow.addColorStop(1, 'rgba(255, 70, 85, 0)')
     ctx!.fillStyle = dotGlow

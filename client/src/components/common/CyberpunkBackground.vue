@@ -185,6 +185,7 @@ onMounted(() => {
 
     // Draw corner brackets
     const bracketSize = 60
+    const bracketOffset = 50
     const bracketPulse = Math.sin(time) * 0.1 + 0.5
 
     ctx!.strokeStyle = `rgba(252, 238, 9, ${bracketPulse})`
@@ -193,30 +194,30 @@ onMounted(() => {
 
     // Top-left
     ctx!.beginPath()
-    ctx!.moveTo(30, 30 + bracketSize)
-    ctx!.lineTo(30, 30)
-    ctx!.lineTo(30 + bracketSize, 30)
+    ctx!.moveTo(bracketOffset, bracketOffset + bracketSize)
+    ctx!.lineTo(bracketOffset, bracketOffset)
+    ctx!.lineTo(bracketOffset + bracketSize, bracketOffset)
     ctx!.stroke()
 
     // Top-right
     ctx!.beginPath()
-    ctx!.moveTo(canvas!.width - 30 - bracketSize, 30)
-    ctx!.lineTo(canvas!.width - 30, 30)
-    ctx!.lineTo(canvas!.width - 30, 30 + bracketSize)
+    ctx!.moveTo(canvas!.width - bracketOffset - bracketSize, bracketOffset)
+    ctx!.lineTo(canvas!.width - bracketOffset, bracketOffset)
+    ctx!.lineTo(canvas!.width - bracketOffset, bracketOffset + bracketSize)
     ctx!.stroke()
 
     // Bottom-left
     ctx!.beginPath()
-    ctx!.moveTo(30, canvas!.height - 30 - bracketSize)
-    ctx!.lineTo(30, canvas!.height - 30)
-    ctx!.lineTo(30 + bracketSize, canvas!.height - 30)
+    ctx!.moveTo(bracketOffset, canvas!.height - bracketOffset - bracketSize)
+    ctx!.lineTo(bracketOffset, canvas!.height - bracketOffset)
+    ctx!.lineTo(bracketOffset + bracketSize, canvas!.height - bracketOffset)
     ctx!.stroke()
 
     // Bottom-right
     ctx!.beginPath()
-    ctx!.moveTo(canvas!.width - 30 - bracketSize, canvas!.height - 30)
-    ctx!.lineTo(canvas!.width - 30, canvas!.height - 30)
-    ctx!.lineTo(canvas!.width - 30, canvas!.height - 30 - bracketSize)
+    ctx!.moveTo(canvas!.width - bracketOffset - bracketSize, canvas!.height - bracketOffset)
+    ctx!.lineTo(canvas!.width - bracketOffset, canvas!.height - bracketOffset)
+    ctx!.lineTo(canvas!.width - bracketOffset, canvas!.height - bracketOffset - bracketSize)
     ctx!.stroke()
 
     animationId = requestAnimationFrame(animate)
