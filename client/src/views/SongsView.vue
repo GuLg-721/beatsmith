@@ -104,6 +104,10 @@ watch(searchQuery, () => {
       <NButton v-if="authStore.isLoggedIn" type="primary" @click="showUpload = true">
         + 上传歌曲
       </NButton>
+      <router-link v-if="authStore.isLoggedIn" :to="`/profile/${authStore.user?.id}`" class="profile-link">
+        <span class="profile-icon">👤</span>
+        <span class="profile-text">{{ authStore.user?.nickname || authStore.user?.username }}</span>
+      </router-link>
       <router-link v-else to="/login">
         <NButton>登录</NButton>
       </router-link>
@@ -200,6 +204,34 @@ watch(searchQuery, () => {
   color: var(--ink);
 }
 
+.profile-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  text-decoration: none;
+  transition: all 0.2s;
+  margin-left: auto;
+}
+
+.profile-link:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.3);
+}
+
+.profile-icon {
+  font-size: 1.2rem;
+}
+
+.profile-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
 .search-box {
   flex: 1;
   max-width: 400px;
@@ -207,11 +239,11 @@ watch(searchQuery, () => {
 
 :deep(.n-input) {
   --n-border: 1px solid var(--border) !important;
-  --n-border-hover: 1px solid oklch(0.62 0.22 350 / 0.4) !important;
+  --n-border-hover: 1px solid var(--primary) !important;
   --n-border-focus: 1px solid var(--primary) !important;
-  --n-color: var(--surface) !important;
-  --n-text-color: var(--ink) !important;
-  --n-placeholder-color: var(--muted) !important;
+  --n-color: var(--bg-surface) !important;
+  --n-text-color: var(--text) !important;
+  --n-placeholder-color: var(--text-muted) !important;
   border-radius: 8px !important;
 }
 
@@ -260,8 +292,8 @@ watch(searchQuery, () => {
 }
 
 .sort-btn:hover {
-  border-color: oklch(0.62 0.22 350 / 0.4);
-  color: var(--ink);
+  border-color: var(--primary);
+  color: var(--text);
 }
 
 .sort-btn.active {
