@@ -60,6 +60,9 @@ export const useGameStore = defineStore('game', () => {
     miss.value = 0
     feedbacks.value = []
     processedNotes.value = new Set()
+    activeSpinner.value = null
+    spinnerClicks.value = 0
+    spinnerStartTime.value = 0
     state.value = 'ready'
   }
 

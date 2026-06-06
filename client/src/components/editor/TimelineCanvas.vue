@@ -311,14 +311,16 @@ function handleMouseDown(e: MouseEvent) {
 
     if (editorStore.activeTool !== 'select') {
       const noteType = editorStore.activeTool as 'circle' | 'tap' | 'spinner'
+      // Spinner 持续 2 拍（根据 BPM 计算）
+      const bpm = audioStore.estimatedBPM || 120
+      const spinnerDuration = (60000 / bpm) * 2 // 2 拍的毫秒数
       const newNote: Note = {
         id: nanoid(8),
         type: noteType,
         time,
         x: 0.5 + (Math.random() - 0.5) * 0.3,
         y: yNorm,
-        // Spinner 默认持续 2000ms
-        ...(noteType === 'spinner' ? { endTime: time + 2000 } : {})
+        ...(noteType === 'spinner' ? { endTime: time + spinnerDuration } : {})
       }
       editorStore.addNote(newNote)
     }

@@ -379,7 +379,12 @@ function render() {
         }
         if (note.type === 'spinner' && note.endTime && !processed.has(note.id)) {
           if (ct - note.endTime > 150) {
-            gameStore.handleMiss(note.id); playHitSound('miss')
+            // 如果是活跃的 Spinner，先结束它
+            if (gameStore.activeSpinner?.id === note.id) {
+              gameStore.endSpinner(ct)
+            }
+            gameStore.handleMiss(note.id)
+            playHitSound('miss')
             addJT('miss', note.x * canvasWidth, note.y * canvasHeight)
           }
         }
