@@ -205,29 +205,33 @@ watch(searchQuery, () => {
 }
 
 .profile-link {
+  position: fixed;
+  top: 32px;
+  right: 32px;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-card);
+  border-radius: 4px;
+  background: rgba(var(--primary-rgb), 0.08);
   text-decoration: none;
   transition: all 0.2s;
-  margin-left: auto;
+  z-index: 10;
 }
 
 .profile-link:hover {
   border-color: var(--primary);
-  box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.3);
+  background: rgba(var(--primary-rgb), 0.15);
+  box-shadow: 0 0 12px rgba(var(--primary-rgb), 0.3);
 }
 
 .profile-icon {
-  font-size: 1.2rem;
+  font-size: 0.9rem;
 }
 
 .profile-text {
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   font-weight: 500;
   color: var(--text);
 }
