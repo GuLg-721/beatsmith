@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
-import ThemeBackground from '@/components/common/ThemeBackground.vue'
+import ParticleBackground from '@/components/common/ParticleBackground.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -25,7 +25,7 @@ function handleCTA() {
 
 <template>
   <div class="home">
-    <ThemeBackground />
+    <ParticleBackground />
 
     <Transition name="fade-up">
       <div v-if="showContent" class="content">
