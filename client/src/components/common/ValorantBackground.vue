@@ -88,7 +88,11 @@ onMounted(() => {
       ctx!.beginPath()
       ctx!.moveTo(line.x1, line.y1)
       ctx!.lineTo(line.x2, line.y2)
-      ctx!.strokeStyle = line.color.replace(')', `, ${line.opacity + pulse})`).replace('rgb', 'rgba')
+      const hex = line.color
+      const r = parseInt(hex.slice(1, 3), 16)
+      const g = parseInt(hex.slice(3, 5), 16)
+      const b = parseInt(hex.slice(5, 7), 16)
+      ctx!.strokeStyle = `rgba(${r}, ${g}, ${b}, ${line.opacity + pulse})`
       ctx!.lineWidth = 1.5
       ctx!.stroke()
     })
