@@ -240,61 +240,44 @@ function drawSpinner(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   const isActive = gameStore.activeSpinner?.id === note.id
   const isCompleted = gameStore.processedNotes?.has(note.id)
 
+  // 活跃或已完成时始终绘制
   if (!isActive && !isCompleted && td < -500) return
+  // 未激活未完成且未到时间：显示预览
+  if (!isActive && !isCompleted && td > 0) {
+    // 预览圈
+    const R = 55
+    ctx.globalAlpha = 0.6
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.4)'; ctx.lineWidth = 5
+    ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke()
+    // 旋转箭头预览
+    ctx.save(); ctx.translate(x, y); ctx.rotate(Date.now() * 0.002)
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)'; ctx.lineWidth = 2.5
+    ctx.beginPath(); ctx.arc(0, 0, R - 10, 0, Math.PI * 1.2); ctx.stroke()
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.6)'
+    ctx.beginPath(); ctx.moveTo(R - 10, -5); ctx.lineTo(R - 4, 0); ctx.lineTo(R - 10, 5); ctx.closePath(); ctx.fill()
+    ctx.restore()
+    ctx.font = 'bold 11px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.6)'; ctx.fillText('空格', x, y)
+    ctx.globalAlpha = 1
+    return
+  }
 
   const duration = note.endTime - note.time
   const requiredClicks = Math.floor(5 + (duration / 1000) * 4)
   const progress = isActive ? Math.min(1, gameStore.spinnerClicks / requiredClicks) : (isCompleted ? 1 : 0)
 
-  let alpha = 1
-  if (td > 1200 && !isActive) alpha = Math.max(0, 1 - (td - 1200) / 600)
-  ctx.globalAlpha = alpha
-
   const R = 55
 
-  // === 未激活：判定圈 + 旋转预览 ===
-  if (!isActive && !isCompleted) {
-    const ad = 1200
-    if (td > 0 && td < ad) {
-      const p = 1 - td / ad, sc = 3.5 - 2.5 * p
-      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1.5
-      ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS * sc, 0, Math.PI * 2); ctx.stroke()
-      ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2.5
-      ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS * sc, 0, Math.PI * 2); ctx.stroke()
-    }
-    drawPerfectFlash(ctx, x, y, td)
-
-    // 外圈
-    ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)'; ctx.lineWidth = 6
-    ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke()
-
-    // 旋转预览箭头
-    ctx.save(); ctx.translate(x, y); ctx.rotate(Date.now() * 0.002)
-    ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)'; ctx.lineWidth = 3
-    ctx.beginPath(); ctx.arc(0, 0, R - 12, 0, Math.PI * 1.2); ctx.stroke()
-    ctx.fillStyle = 'rgba(255, 215, 0, 0.6)'
-    ctx.beginPath(); ctx.moveTo(R - 12, -6); ctx.lineTo(R - 5, 0); ctx.lineTo(R - 12, 6); ctx.closePath(); ctx.fill()
-    ctx.restore()
-
-    // 中心提示
-    ctx.font = 'bold 12px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-    ctx.fillStyle = 'rgba(255, 215, 0, 0.7)'; ctx.fillText('连点', x, y)
-    ctx.globalAlpha = 1
-    return
-  }
-
-  // === 激活/已完成：完整 Spinner ===
-
-  // 1. 外圈背景
+  // 外圈背景
   ctx.strokeStyle = 'rgba(255, 215, 0, 0.2)'; ctx.lineWidth = 8
   ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke()
 
-  // 2. 进度弧
+  // 进度弧
   ctx.strokeStyle = COLORS.spinner; ctx.lineWidth = 8; ctx.lineCap = 'round'
   ctx.beginPath(); ctx.arc(x, y, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress); ctx.stroke()
 
-  // 3. 旋转箭头
-  const rotAngle = isActive ? spinnerAngle.value : Math.PI * 2
+  // 旋转箭头
+  const rotAngle = isActive ? spinnerAngle.value : 0
   ctx.save(); ctx.translate(x, y); ctx.rotate(rotAngle)
   ctx.strokeStyle = 'rgba(255, 215, 0, 0.9)'; ctx.lineWidth = 3
   ctx.beginPath(); ctx.arc(0, 0, R - 14, 0, Math.PI * 1.3); ctx.stroke()
@@ -302,9 +285,9 @@ function drawSpinner(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   ctx.beginPath(); ctx.moveTo(R - 14, -6); ctx.lineTo(R - 6, 0); ctx.lineTo(R - 14, 6); ctx.closePath(); ctx.fill()
   ctx.restore()
 
-  // 4. 中心数字
+  // 中心数字
   ctx.font = 'bold 22px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-  ctx.fillStyle = isActive ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.5)'
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
   ctx.fillText(`${gameStore.spinnerClicks}/${requiredClicks}`, x, y)
 
   ctx.globalAlpha = 1
@@ -465,13 +448,17 @@ function handleKeyDown(e: KeyboardEvent) {
     return
   }
 
-  // 查找 Spinner（启动）
+  // 查找 Spinner（提前 500ms 就可以开始点击）
   let spinnerNote: Note | null = null, spinnerDist = Infinity
   gameStore.notes.forEach(note => {
     if (note.type !== 'spinner') return
     if (processed?.has(note.id)) return
-    const td = Math.abs(note.time - ct)
-    if (td < 200 && td < spinnerDist) { spinnerDist = td; spinnerNote = note }
+    const timeDiff = note.time - ct
+    // 允许在出现前 500ms 到结束后 200ms 内点击
+    if (timeDiff > -200 && timeDiff < 500) {
+      spinnerDist = Math.abs(timeDiff)
+      spinnerNote = note
+    }
   })
 
   if (spinnerNote) {
