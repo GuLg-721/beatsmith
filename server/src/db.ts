@@ -26,9 +26,17 @@ export async function initDB(): Promise<Database> {
       password TEXT NOT NULL,
       nickname TEXT,
       avatar TEXT,
+      theme TEXT DEFAULT 'osu',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `)
+
+  // 迁移：为现有数据库添加 theme 列
+  try {
+    db.run("ALTER TABLE users ADD COLUMN theme TEXT DEFAULT 'osu'")
+  } catch (e) {
+    // 列已存在，忽略错误
+  }
 
   db.run(`
     CREATE TABLE IF NOT EXISTS beatmaps (
