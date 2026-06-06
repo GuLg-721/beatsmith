@@ -158,4 +158,104 @@ router.post('/avatar', authMiddleware, (req: AuthRequest, res: Response) => {
   })
 })
 
+// 音效文件存储配置
+const soundStorage = multer.diskStorage({
+  destination: path.join(__dirname, '..', '..', 'uploads', 'sounds'),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname)
+    cb(null, `sound-${nanoid(8)}${ext}`)
+  }
+})
+
+const uploadSound = multer({
+  storage: soundStorage,
+  limits: { fileSize: 1 * 1024 * 1024 }, // 1MB
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['.mp3', '.wav', '.ogg']
+    const ext = path.extname(file.originalname).toLowerCase()
+    if (allowed.includes(ext)) {
+      cb(null, true)
+    } else {
+      cb(new Error('不支持的音频格式'))
+    }
+  }
+})
+
+// POST /api/upload/sound
+router.post('/sound', authMiddleware, (req: AuthRequest, res: Response) => {
+  uploadSound.single('sound')(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          res.status(400).json({ message: '文件大小超过 1MB 限制' })
+          return
+        }
+        res.status(400).json({ message: err.message })
+        return
+      }
+      res.status(400).json({ message: err.message })
+      return
+    }
+
+    if (!req.file) {
+      res.status(400).json({ message: '请选择音效文件' })
+      return
+    }
+
+    res.status(200).json({
+      url: `/uploads/sounds/${req.file.filename}`
+    })
+  })
+})
+
+// 光标文件存储配置
+const cursorStorage = multer.diskStorage({
+  destination: path.join(__dirname, '..', '..', 'uploads', 'cursors'),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname)
+    cb(null, `cursor-${nanoid(8)}${ext}`)
+  }
+})
+
+const uploadCursor = multer({
+  storage: cursorStorage,
+  limits: { fileSize: 100 * 1024 }, // 100KB
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['.png', '.svg', '.cur']
+    const ext = path.extname(file.originalname).toLowerCase()
+    if (allowed.includes(ext)) {
+      cb(null, true)
+    } else {
+      cb(new Error('不支持的图片格式'))
+    }
+  }
+})
+
+// POST /api/upload/cursor
+router.post('/cursor', authMiddleware, (req: AuthRequest, res: Response) => {
+  uploadCursor.single('cursor')(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          res.status(400).json({ message: '文件大小超过 100KB 限制' })
+          return
+        }
+        res.status(400).json({ message: err.message })
+        return
+      }
+      res.status(400).json({ message: err.message })
+      return
+    }
+
+    if (!req.file) {
+      res.status(400).json({ message: '请选择光标文件' })
+      return
+    }
+
+    res.status(200).json({
+      url: `/uploads/cursors/${req.file.filename}`
+    })
+  })
+})
+
 export default router

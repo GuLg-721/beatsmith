@@ -3,4 +3,6 @@ dist/
 *.db
 server/uploads/*
 !server/uploads/avatars/
+!server/uploads/sounds/
+!server/uploads/cursors/
 .env
