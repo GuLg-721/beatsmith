@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import ThemeBackground from '@/components/common/ThemeBackground.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -32,6 +33,7 @@ function goBack() {
 
 <template>
   <div class="profile-page">
+    <ThemeBackground :reduced="true" />
     <nav class="top-nav">
       <button class="back-btn" @click="goBack">← 返回</button>
       <span class="nav-title">👤 个人档案</span>
@@ -87,6 +89,8 @@ function goBack() {
 
 <style scoped>
 .profile-page {
+  position: relative;
+  z-index: 1;
   min-height: 100vh;
   padding: 2rem;
   max-width: 600px;

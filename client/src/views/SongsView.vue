@@ -5,6 +5,7 @@ import SongCard from '@/components/library/SongCard.vue'
 import UploadDialog from '@/components/library/UploadDialog.vue'
 import { NInput, NButton, NEmpty, NSpin } from 'naive-ui'
 import api from '@/utils/api'
+import ThemeBackground from '@/components/common/ThemeBackground.vue'
 
 const authStore = useAuthStore()
 
@@ -81,6 +82,7 @@ watch(searchQuery, () => {
 
 <template>
   <div class="songs-page">
+    <ThemeBackground :reduced="true" />
     <!-- 顶部栏 -->
     <header class="top-bar">
       <router-link to="/" class="logo-link">
@@ -165,6 +167,8 @@ watch(searchQuery, () => {
 
 <style scoped>
 .songs-page {
+  position: relative;
+  z-index: 1;
   min-height: 100vh;
   padding: 0 2rem 2rem;
 }

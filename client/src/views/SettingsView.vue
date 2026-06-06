@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/authStore'
 import AvatarPicker from '../components/settings/AvatarPicker.vue'
 import PasswordForm from '../components/settings/PasswordForm.vue'
 import ThemePicker from '../components/settings/ThemePicker.vue'
+import ThemeBackground from '@/components/common/ThemeBackground.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -58,6 +59,7 @@ function goBack() {
 
 <template>
   <div class="settings-page">
+    <ThemeBackground :reduced="true" />
     <nav class="top-nav">
       <button class="back-btn" @click="goBack">← 返回</button>
       <span class="nav-title">⚙️ 设置</span>
@@ -132,6 +134,8 @@ function goBack() {
 }
 
 .settings-page {
+  position: relative;
+  z-index: 1;
   min-height: 100vh;
   padding: 2rem;
   max-width: 600px;
