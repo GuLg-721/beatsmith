@@ -1,6 +1,6 @@
 # ⚒️ BeatSmith — 节拍铁匠
 
-> 一个类似 MCosu/osu! standard 模式的网页节拍游戏编辑器。用户注册登录后，上传歌曲、编辑谱面、用鼠标点击/连点/长按来玩节奏游戏。所有谱面公开共享，每张谱面有单曲排行榜和评级系统。
+> 一个类似 MCosu/osu! standard 模式的网页节奏游戏编辑器。用户注册登录后，上传歌曲，系统自动检测节拍并生成基础谱面，用户在编辑器中调整后，用鼠标点击/空格键来挑战节奏游戏。所有谱面公开共享，每张谱面有单曲排行榜和评级系统。
 
 ## 📐 系统架构
 
@@ -8,7 +8,7 @@
 ┌──────────────────────────────────────────────────────────┐
 │                     Vue 3 Frontend                        │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐    │
-│  │ HomeView │ │EditorView│ │PlayerView│ │LibraryView│   │
+│  │ HomeView │ │EditorView│ │PlayerView│ │SongsView │    │
 │  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘    │
 │       │            │            │             │           │
 │  ┌────┴────────────┴────────────┴─────────────┴────┐     │
@@ -49,7 +49,6 @@
 | Vue Router | 路由 |
 | Naive UI | 组件库（暗色主题内置） |
 | motion-v | 动画效果 |
-| Lucide Vue Next | 图标库 |
 | Canvas 2D | 游戏渲染 |
 | Web Audio API | 音频分析与播放 |
 | Vite | 构建工具 |
@@ -60,7 +59,7 @@
 | 技术 | 用途 |
 |------|------|
 | Node.js + Express | REST API 服务 |
-| better-sqlite3 | SQLite 数据库驱动 |
+| sql.js | SQLite 数据库（纯 JS，无需编译） |
 | bcryptjs | 密码哈希 |
 | jsonwebtoken (JWT) | 身份认证 |
 | multer | 文件上传处理 |
@@ -71,101 +70,46 @@
 - **SQLite** — 轻量级，零配置，单文件 `data.db`
 - 开发阶段单机使用，后期可迁移到 PostgreSQL/MySQL
 
-## 📊 数据库 Schema
-
-```sql
--- 用户表
-CREATE TABLE users (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  username    TEXT UNIQUE NOT NULL,
-  password    TEXT NOT NULL,          -- bcrypt 哈希
-  nickname    TEXT,
-  avatar      TEXT,
-  created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- 谱面表（公开共享）
-CREATE TABLE beatmaps (
-  id          TEXT PRIMARY KEY,       -- nanoid
-  creator_id  INTEGER NOT NULL REFERENCES users(id),
-  title       TEXT NOT NULL,
-  artist      TEXT,
-  audio_file  TEXT NOT NULL,          -- 服务器上的文件路径
-  duration    INTEGER,                -- 时长 ms
-  bpm         REAL,
-  map_data    TEXT NOT NULL,          -- JSON: 完整谱面数据
-  difficulty  TEXT DEFAULT 'Normal',
-  play_count  INTEGER DEFAULT 0,
-  created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- 分数表
-CREATE TABLE scores (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id     INTEGER NOT NULL REFERENCES users(id),
-  beatmap_id  TEXT NOT NULL REFERENCES beatmaps(id),
-  score       INTEGER NOT NULL,
-  max_combo   INTEGER NOT NULL,
-  accuracy    REAL NOT NULL,
-  grade       TEXT NOT NULL,          -- SSS/SS/S/A/B
-  perfect     INTEGER DEFAULT 0,
-  great       INTEGER DEFAULT 0,
-  good        INTEGER DEFAULT 0,
-  miss        INTEGER DEFAULT 0,
-  played_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(user_id, beatmap_id)        -- 每人每谱面只保留最高分
-);
-```
-
-## 🎮 游戏玩法（MCosu 风格）
+## 🎮 游戏玩法
 
 - 音符在画布**任意位置**出现，不是固定车道
-- 判定圈（approach circle）从大缩小到 note 位置，缩到匹配时点击
-- **单击**：点击 Circle 类型 note
-- **长按**：点击 Slider 起点后按住鼠标沿路径滑动
-- **连点**：Spinner 类型需快速连续点击消掉
-- 鼠标光标显示为自定义样式
+- **Circle（红色）**：判定圈缩小到音符位置时，**鼠标点击**
+- **Tap（橙色）**：音符出现后，**按空格键**触发
+- 系统自动检测节拍并生成基础谱面，用户可在编辑器中调整
 
-### 三种音符类型
-| 类型 | 操作 | 说明 |
-|------|------|------|
-| **Circle** | 单击 | 出现后缩小到判定圈，玩家在时机内点击 |
-| **Slider** | 点击+按住 | 点击起点后按住沿路径滑动，松手判定 |
-| **Spinner** | 快速连点 | 快速连续点击消掉，限时内达到目标次数 |
+### 两种音符类型
+| 类型 | 操作 | 视觉 | 说明 |
+|------|------|------|------|
+| **Circle** | 鼠标点击 | 红色圆形 + 判定圈 | 标准节奏点 |
+| **Tap** | 空格键 | 橙色圆形 + "空格" 提示 | 快速连击点 |
 
-## 🏆 评级系统（5 级）
+### 判定系统
+| 判定 | 时间窗口 | 得分 | 颜色 |
+|------|---------|------|------|
+| Perfect | ±40ms | 300 | 金色 |
+| Great | ±80ms | 150 | 蓝色 |
+| Good | ±140ms | 50 | 绿色 |
+| Miss | >140ms | 0 | 红色 |
 
+### 评级系统
 | 等级 | 准确率 | 颜色 |
 |------|--------|------|
 | **SSS** | 100.00% | 金色 ✨ |
-| **SS** | 99.00% - 99.99% | 蓝色 |
-| **S** | 95.00% - 98.99% | 绿色 |
-| **A** | 90.00% - 94.99% | 橙色 |
+| **SS** | 99.00%+ | 蓝色 |
+| **S** | 95.00%+ | 绿色 |
+| **A** | 90.00%+ | 橙色 |
 | **B** | < 90.00% | 灰色 |
-
-### 判定时间窗口
-| 判定 | 时间窗口 | 得分 |
-|------|---------|------|
-| Perfect | ±20ms | 300 |
-| Great | ±50ms | 100 |
-| Good | ±100ms | 50 |
-| Miss | >100ms / 未击中 | 0 |
 
 ## 🏗️ 页面/路由
 
 | 路由 | 页面 | 功能 | 需登录 |
 |------|------|------|--------|
-| `/` | HomeView | 沉浸式首页 + 粒子背景 + CTA | 否 |
-| `/login` | LoginView | 登录/注册（浮动表单 + 动态背景） | 否 |
-| `/songs` | SongsView | 歌曲库（唱片店风格卡片墙） | 否 |
-| `/leaderboard` | LeaderboardView | 全局总分 + 单曲排行 | 否 |
-| `/editor` | EditorView | 时间轴编辑器 + 游戏场预览 | ✅ |
-| `/play/:mapId` | PlayerView | MCosu 风格节奏游戏 | ✅ |
-| `/map/:mapId` | MapDetailView | 谱面详情 + 排行榜 + 开始游戏 | 否 |
-| `/profile/:id` | ProfileView | 个人档案 + 评级分布 + 游玩记录 | ✅ |
-| `/settings` | SettingsView | 个人设置（修改昵称、密码） | ✅ |
-| `*` | NotFoundView | 404 页面 | 否 |
+| `/` | HomeView | 沉浸式首页 + 粒子背景 | 否 |
+| `/login` | LoginView | 登录/注册（极光背景） | 否 |
+| `/songs` | SongsView | 歌曲库（唱片店风格卡片） | 否 |
+| `/editor` | EditorView | 时间轴编辑器 + 自动生成 | ✅ |
+| `/play/:mapId` | PlayerView | 节奏游戏（Circle + Tap） | ✅ |
+| `/map/:mapId` | MapDetailView | 谱面详情 + 排行榜 | 否 |
 
 ## 📁 项目结构
 
@@ -178,35 +122,43 @@ beatforge/
 │   │   ├── router/index.ts
 │   │   ├── stores/
 │   │   │   ├── authStore.ts         # 登录状态 + JWT
-│   │   │   ├── audioStore.ts        # 音频播放
-│   │   │   ├── editorStore.ts       # 谱面编辑
-│   │   │   └── gameStore.ts         # 游戏分数
+│   │   │   ├── audioStore.ts        # 音频播放 + 节拍检测
+│   │   │   ├── editorStore.ts       # 谱面编辑状态
+│   │   │   └── gameStore.ts         # 游戏分数 + 判定
 │   │   ├── engine/
-│   │   │   ├── AudioEngine.ts       # Web Audio API
-│   │   │   ├── BeatDetector.ts      # 节拍检测
+│   │   │   ├── AudioEngine.ts       # Web Audio API 封装
+│   │   │   ├── BeatDetector.ts      # 节拍检测算法
+│   │   │   ├── BeatGenerator.ts     # 自动谱面生成
 │   │   │   ├── HitDetector.ts       # 判定逻辑
-│   │   │   └── FrequencyAnalyzer.ts # FFT 分析
-│   │   ├── models/
-│   │   │   ├── BeatMap.ts           # 谱面数据模型
-│   │   │   ├── Score.ts             # 分数模型
-│   │   │   └── User.ts              # 用户模型
+│   │   │   └── FrequencyAnalyzer.ts # FFT 频谱分析
 │   │   ├── utils/
 │   │   │   ├── grade.ts             # 评级计算
-│   │   │   ├── api.ts               # axios 封装
-│   │   │   └── time.ts              # 时间工具
+│   │   │   └── api.ts               # axios 封装
 │   │   ├── components/
 │   │   │   ├── common/
+│   │   │   │   ├── ParticleBackground.vue  # 首页粒子背景
+│   │   │   │   └── AuroraBackground.vue    # 登录极光背景
 │   │   │   ├── editor/
+│   │   │   │   ├── TimelineCanvas.vue      # 时间轴 Canvas
+│   │   │   │   ├── ToolbarPanel.vue        # 工具栏
+│   │   │   │   ├── AudioControlBar.vue     # 音频控制
+│   │   │   │   └── BottomBar.vue           # 底部控制
 │   │   │   ├── player/
+│   │   │   │   ├── GameCanvas.vue          # 游戏 Canvas
+│   │   │   │   └── ResultScreen.vue        # 结算画面
 │   │   │   └── library/
+│   │   │       ├── SongCard.vue            # 歌曲卡片
+│   │   │       └── UploadDialog.vue        # 上传对话框
 │   │   └── views/
 │   │       ├── HomeView.vue
 │   │       ├── LoginView.vue
-│   │       ├── RegisterView.vue
+│   │       ├── SongsView.vue
 │   │       ├── EditorView.vue
 │   │       ├── PlayerView.vue
-│   │       └── MapDetailView.vue
-│   ├── index.html
+│   │       ├── MapDetailView.vue
+│   │       ├── ProfileView.vue
+│   │       ├── SettingsView.vue
+│   │       └── NotFoundView.vue
 │   ├── vite.config.ts
 │   └── package.json
 │
@@ -214,20 +166,20 @@ beatforge/
 │   ├── src/
 │   │   ├── index.ts                 # Express 入口
 │   │   ├── db.ts                    # SQLite 连接 + 建表
-│   │   ├── middleware/
-│   │   │   └── auth.ts             # JWT 验证中间件
+│   │   ├── middleware/auth.ts       # JWT 验证
 │   │   ├── routes/
 │   │   │   ├── auth.ts             # 注册/登录
 │   │   │   ├── maps.ts             # 谱面 CRUD
 │   │   │   ├── scores.ts           # 分数提交/查询
 │   │   │   └── upload.ts           # 文件上传
-│   │   └── utils/
-│   │       └── jwt.ts              # JWT 签发/验证
-│   ├── uploads/                     # 音频文件存储
-│   ├── data.db                      # SQLite 数据库文件
-│   ├── package.json
-│   └── tsconfig.json
+│   │   └── utils/jwt.ts            # JWT 签发
+│   ├── uploads/                     # 音频文件
+│   ├── data.db                      # SQLite 数据库
+│   └── package.json
 │
+├── docs/superpowers/specs/          # 设计文档
+├── PRODUCT.md                       # 产品定义
+├── DESIGN.md                        # 设计系统
 ├── package.json                     # workspace root
 └── README.md
 ```
@@ -244,7 +196,7 @@ beatforge/
 ### 谱面
 | 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
-| GET | `/api/maps` | 获取所有公开谱面列表 | 否 |
+| GET | `/api/maps` | 获取公开谱面列表 | 否 |
 | GET | `/api/maps/:id` | 获取谱面详情 | 否 |
 | POST | `/api/maps` | 创建谱面 | 是 |
 | PUT | `/api/maps/:id` | 更新谱面 | 是(作者) |
@@ -253,103 +205,100 @@ beatforge/
 ### 分数
 | 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
-| GET | `/api/maps/:id/scores` | 获取该谱面排行榜 | 否 |
+| GET | `/api/maps/:id/scores` | 获取排行榜 | 否 |
 | POST | `/api/maps/:id/scores` | 提交分数 | 是 |
 
 ### 文件
 | 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
 | POST | `/api/upload/audio` | 上传音频文件 | 是 |
+| POST | `/api/upload/cover` | 上传封面图片 | 是 |
 
-## 📅 开发计划
+## 📊 数据库 Schema
 
-### Phase 1: 基础骨架 + 认证（Day 1-3）
-- [ ] 前端脚手架：Vue 3 + TS + Vite
-- [ ] 后端脚手架：Express + SQLite
-- [ ] 数据库初始化
-- [ ] AudioEngine — Web Audio API 封装
-- [ ] 后端认证：注册/登录/JWT
-- [ ] authStore — 前端登录状态
-- [ ] LoginView / RegisterView
-- [ ] HomeView — 上传音频
+```sql
+-- 用户表
+CREATE TABLE users (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  username    TEXT UNIQUE NOT NULL,
+  password    TEXT NOT NULL,
+  nickname    TEXT,
+  avatar      TEXT,
+  created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
-### Phase 2: 节拍检测（Day 4）
-- [ ] BeatDetector — 能量检测 + 频谱通量
-- [ ] 波形显示 + 节拍叠加
-- [ ] BPM 估算 + 手动覆盖
+-- 谱面表（公开共享）
+CREATE TABLE beatmaps (
+  id          TEXT PRIMARY KEY,
+  creator_id  INTEGER NOT NULL REFERENCES users(id),
+  title       TEXT NOT NULL,
+  artist      TEXT,
+  audio_file  TEXT NOT NULL,
+  cover_image TEXT,
+  duration    INTEGER,
+  bpm         REAL,
+  map_data    TEXT NOT NULL,
+  difficulty  TEXT DEFAULT 'Normal',
+  play_count  INTEGER DEFAULT 0,
+  created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
-### Phase 3: 谱面编辑器（Day 5-7）
-- [ ] editorStore — 笔记数组、撤销栈
-- [ ] TimelineCanvas — 水平滚动时间轴
-- [ ] PlayfieldPreview — 音符位置预览
-- [ ] 音符放置 + 节拍网格吸附
-- [ ] Circle / Slider / Spinner 三种类型
-- [ ] Slider 路径编辑
-- [ ] 音符选择/拖拽/删除 + Undo/Redo
-- [ ] 后端谱面 API
-
-### Phase 4: 游戏模式（Day 8-9）
-- [ ] GameCanvas — 全屏 Canvas + rAF 渲染
-- [ ] HitDetector — 时间窗口 + 距离判定
-- [ ] 鼠标点击/连点/长按输入
-- [ ] 三种音符玩法
-- [ ] 判定系统 + 分数/连击/准确率
-- [ ] 评级计算 → SSS/SS/S/A/B
-- [ ] 后端分数 API
-
-### Phase 5: 排行榜 + 谱面库（Day 10）
-- [ ] MapDetailView — 谱面信息 + 排行榜
-- [ ] 排行榜组件
-- [ ] HomeView — 公开谱面列表
-- [ ] 评级等级颜色显示
-
-### Phase 6: 持久化 + 视觉打磨（Day 11-12）
-- [ ] 谱面 JSON 导出/导入
-- [ ] 用户记录持久化
-- [ ] Canvas 粒子特效 + 背景可视化
-- [ ] 键盘快捷键
-- [ ] 暗色霓虹主题 UI
-
-### Phase 7: 后期增强（可选）
-- [ ] 音乐文件迁移到云存储
-- [ ] 更多排行榜类型
-- [ ] 谱面搜索/筛选
-- [ ] 用户个人主页
+-- 分数表
+CREATE TABLE scores (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER NOT NULL REFERENCES users(id),
+  beatmap_id  TEXT NOT NULL REFERENCES beatmaps(id),
+  score       INTEGER NOT NULL,
+  max_combo   INTEGER NOT NULL,
+  accuracy    REAL NOT NULL,
+  grade       TEXT NOT NULL,
+  perfect     INTEGER DEFAULT 0,
+  great       INTEGER DEFAULT 0,
+  good        INTEGER DEFAULT 0,
+  miss        INTEGER DEFAULT 0,
+  played_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, beatmap_id)
+);
+```
 
 ## 🎨 UI 设计
 
 - **视觉风格**：暗色霓虹 — 深色背景 + 紫/蓝/粉霓虹高亮
-- **动画**：motion-v（游戏特效 + 页面过渡 + 登录动效）
-- **组件库**：待定（参考 UI 开源项目后确定）
+- **组件库**：Naive UI（暗色主题内置）
+- **动画**：motion-v + CSS transitions
+- **设计系统**：OKLCH 色彩 + impeccable skill
 
 ## 📏 项目规范
 
 ### 密码规则
-- 最少 8 位
-- 必须包含字母和数字
+- 最少 8 位，必须包含字母和数字
 
 ### 上传限制
-- 音频文件最大 50MB
-- 支持格式：MP3, WAV
-- 封面图：可选上传，无封面时用 OKLCH 渐变色占位
+- 音频文件最大 50MB，支持 MP3/WAV
+- 封面图可选上传，无封面时用 OKLCH 渐变色占位
 
 ### 路由权限
-- 公开页面：首页、登录、歌曲库、排行榜、谱面详情、404
-- 需登录页面：编辑器、游戏、个人档案、设置
+- 公开：首页、登录、歌曲库、谱面详情、404
+- 需登录：编辑器、游戏、个人档案、设置
+
+### 管理员账号
+- 用户名：`admin`
+- 密码：`admin123`
 
 ## 🔧 开发命令
 
 ```bash
-# 安装依赖
+# 安装所有依赖
 npm run install:all
 
 # 同时启动前后端
 npm run dev
 
-# 仅启动前端
+# 仅启动前端 (port 5173)
 npm run dev:client
 
-# 仅启动后端
+# 仅启动后端 (port 3000)
 npm run dev:server
 
 # 构建
@@ -358,46 +307,38 @@ npm run build
 
 ## 📝 Git 提交规范
 
-### 提交消息格式
 - `init:` 项目初始化
 - `feat:` 新功能
 - `fix:` Bug 修复
 - `style:` 样式调整
 - `refactor:` 代码重构
 - `docs:` 文档更新
-- `chore:` 构建/工具变更
 
-### ⚠️ 分支管理规则（重要）
+## 📋 当前进度
 
-**每次大变更或影响功能的变化前，必须先创建分支保存当前版本：**
+### ✅ 已完成
+- [x] 项目脚手架（Vue 3 + Express + SQLite）
+- [x] 用户认证系统（注册/登录/JWT）
+- [x] 首页（沉浸式粒子背景）
+- [x] 登录页（极光背景 + 浮动卡片）
+- [x] 歌曲上传 + 歌曲库页面
+- [x] 音频引擎（Web Audio API + 节拍检测）
+- [x] 自动谱面生成（Circle + Tap）
+- [x] 谱面编辑器（Canvas 时间轴）
+- [x] 节奏游戏（鼠标点击 + 空格键）
+- [x] 判定系统 + 评级系统
+- [x] 谱面详情页 + 排行榜
 
-1. **大变更前**：`git checkout -b feature/xxx` 创建功能分支
-2. **完成变更后**：合并回 main 并推送
-3. **每次完成一步**：提交到 git 并推送（和分支管理同等重要）
+### 🔜 待开发
+- [ ] 排行榜页面（全局排行）
+- [ ] 个人档案页（游玩记录 + 评级分布）
+- [ ] 设置页面（修改昵称/密码）
+- [ ] 皮肤系统（自定义音效/光标）
+- [ ] 后端分享功能（公开谱面链接）
 
-**什么算"大变更"：**
-- 新增/重写一个页面的 UI
-- 修改数据库结构
-- 修改 API 接口
-- 修改路由结构
-- 修改核心引擎逻辑（AudioEngine, HitDetector 等）
-- 任何可能导致现有功能失效的改动
+## 🌿 分支说明
 
-**分支命名规范：**
-- `feature/xxx` — 新功能
-- `fix/xxx` — Bug 修复
-- `refactor/xxx` — 重构
-- `ui/xxx` — UI 变更
-
-**工作流程：**
-```
-1. git checkout main
-2. git checkout -b feature/home-page-particles    ← 创建分支
-3. 编写代码...
-4. git add -A && git commit -m "feat: add particle background"
-5. git checkout main && git merge feature/home-page-particles  ← 合并
-6. git push origin main                            ← 推送
-7. git branch -d feature/home-page-particles       ← 删除分支
-```
-
-每个阶段完成后 git commit 并 push 到 GitHub。
+| 分支 | 内容 | 用途 |
+|------|------|------|
+| `main` | Circle + Tap | 当前开发版 |
+| `v1-spinner-archive` | Circle + Tap + Spinner | 旧版存档 |
