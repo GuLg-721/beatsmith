@@ -24,6 +24,15 @@ const coverStorage = multer.diskStorage({
   }
 })
 
+// 头像文件存储配置
+const avatarStorage = multer.diskStorage({
+  destination: path.join(__dirname, '..', '..', 'uploads', 'avatars'),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname)
+    cb(null, `avatar-${nanoid(8)}${ext}`)
+  }
+})
+
 const uploadAudio = multer({
   storage: audioStorage,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
@@ -43,6 +52,20 @@ const uploadCover = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (_req, file, cb) => {
     const allowed = ['.jpg', '.jpeg', '.png', '.webp']
+    const ext = path.extname(file.originalname).toLowerCase()
+    if (allowed.includes(ext)) {
+      cb(null, true)
+    } else {
+      cb(new Error('不支持的图片格式'))
+    }
+  }
+})
+
+const uploadAvatar = multer({
+  storage: avatarStorage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
     const ext = path.extname(file.originalname).toLowerCase()
     if (allowed.includes(ext)) {
       cb(null, true)
@@ -104,6 +127,33 @@ router.post('/cover', authMiddleware, (req: AuthRequest, res: Response) => {
 
     res.status(200).json({
       filename: req.file.filename
+    })
+  })
+})
+
+// POST /api/upload/avatar
+router.post('/avatar', authMiddleware, (req: AuthRequest, res: Response) => {
+  uploadAvatar.single('avatar')(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          res.status(400).json({ message: '文件大小超过 2MB 限制' })
+          return
+        }
+        res.status(400).json({ message: err.message })
+        return
+      }
+      res.status(400).json({ message: err.message })
+      return
+    }
+
+    if (!req.file) {
+      res.status(400).json({ message: '请选择头像文件' })
+      return
+    }
+
+    res.status(200).json({
+      url: `/uploads/avatars/${req.file.filename}`
     })
   })
 })
