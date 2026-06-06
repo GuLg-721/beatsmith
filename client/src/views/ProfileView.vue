@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import ThemeBackground from '@/components/common/ThemeBackground.vue'
+import api from '@/utils/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -11,6 +12,64 @@ const authStore = useAuthStore()
 const profileUser = computed(() => authStore.user)
 const loading = ref(true)
 const recentPlays = ref<any[]>([])
+
+const activeTab = ref<'overview' | 'recent' | 'best' | 'grades'>('overview')
+const userStats = ref<any>(null)
+const recentScores = ref<any[]>([])
+const bestScores = ref<any[]>([])
+const loadingTab = ref(false)
+
+const tabs = [
+  { key: 'overview' as const, label: '📊 概览' },
+  { key: 'recent' as const, label: '🎵 最近游玩' },
+  { key: 'best' as const, label: '🏆 最佳成绩' },
+  { key: 'grades' as const, label: '📈 评级分布' }
+]
+
+async function fetchTabData() {
+  if (!profileUser.value) return
+
+  loadingTab.value = true
+  try {
+    const userId = profileUser.value.id
+
+    if (activeTab.value === 'overview' || activeTab.value === 'grades') {
+      const res = await api.get(`/api/users/${userId}/stats`)
+      userStats.value = res.data
+    }
+
+    if (activeTab.value === 'recent') {
+      const res = await api.get(`/api/users/${userId}/scores?limit=10`)
+      recentScores.value = res.data.scores
+    }
+
+    if (activeTab.value === 'best') {
+      const res = await api.get(`/api/users/${userId}/best`)
+      bestScores.value = res.data.bestScores
+    }
+  } catch (err) {
+    console.error('Failed to fetch tab data:', err)
+  } finally {
+    loadingTab.value = false
+  }
+}
+
+function switchTab(tab: typeof activeTab.value) {
+  activeTab.value = tab
+  fetchTabData()
+}
+
+function getGradeColor(grade: string): string {
+  const colors: Record<string, string> = {
+    'SSS': '#ff66aa', 'SS': '#bf00ff', 'S': '#00d4ff',
+    'A': '#00ff88', 'B': '#fcee09', 'C': '#ff6600', 'D': '#ff4466'
+  }
+  return colors[grade] || '#888888'
+}
+
+function formatScore(score: number): string {
+  return score.toLocaleString()
+}
 
 // 预设头像数据（与 AvatarPicker 保持一致）
 const presetAvatars: Record<string, { color: string; path: string }> = {
@@ -34,6 +93,7 @@ const isOwnProfile = computed(() => {
 
 onMounted(async () => {
   loading.value = false
+  fetchTabData()
 })
 
 function goBack() {
@@ -114,26 +174,130 @@ function goBack() {
         </div>
       </div>
 
-      <!-- 最近游玩记录 -->
-      <div class="recent-section">
-        <h3 class="section-title">🎵 最近游玩</h3>
-        <div v-if="recentPlays.length > 0" class="recent-list">
-          <div v-for="play in recentPlays" :key="play.id" class="recent-item">
-            <div class="recent-info">
-              <div class="recent-title">{{ play.title }}</div>
-              <div class="recent-artist">{{ play.artist }}</div>
+      <!-- 标签页 -->
+      <div class="tabs">
+        <button
+          v-for="tab in tabs"
+          :key="tab.key"
+          class="tab-btn"
+          :class="{ active: activeTab === tab.key }"
+          @click="switchTab(tab.key)"
+        >
+          {{ tab.label }}
+        </button>
+      </div>
+
+      <!-- 标签页内容 -->
+      <div class="tab-content">
+        <div v-if="loadingTab" class="loading">加载中...</div>
+
+        <!-- 概览 -->
+        <template v-else-if="activeTab === 'overview' && userStats">
+          <div class="stats-summary">
+            <div class="stat-item">
+              <span class="stat-label">总分</span>
+              <span class="stat-value">{{ formatScore(userStats.totalScore) }}</span>
             </div>
-            <div class="recent-stats">
-              <span class="grade-badge">{{ play.grade }}</span>
-              <div class="score">{{ play.score.toLocaleString() }}</div>
-              <div class="accuracy">{{ play.accuracy }}%</div>
+            <div class="stat-item">
+              <span class="stat-label">游玩次数</span>
+              <span class="stat-value">{{ userStats.playCount }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">平均准确率</span>
+              <span class="stat-value">{{ userStats.avgAccuracy }}%</span>
             </div>
           </div>
-        </div>
-        <div v-else class="empty-recent">
-          <p>还没有游玩记录</p>
-          <router-link to="/songs" class="explore-link">去浏览歌曲 →</router-link>
-        </div>
+          <div class="grade-summary">
+            <div
+              v-for="(count, grade) in userStats.grades"
+              :key="grade"
+              class="grade-badge"
+              :style="{ color: getGradeColor(grade.toUpperCase()), borderColor: getGradeColor(grade.toUpperCase()) }"
+              v-if="count > 0"
+            >
+              {{ grade.toUpperCase() }} × {{ count }}
+            </div>
+          </div>
+        </template>
+
+        <!-- 最近游玩 -->
+        <template v-else-if="activeTab === 'recent'">
+          <div v-if="recentScores.length > 0" class="score-list">
+            <div v-for="score in recentScores" :key="score.id" class="score-item">
+              <div class="score-info">
+                <div class="score-title">{{ score.title || '未知歌曲' }}</div>
+                <div class="score-artist">{{ score.artist || 'Unknown' }}</div>
+              </div>
+              <div class="score-stats">
+                <span
+                  class="grade-badge"
+                  :style="{ color: getGradeColor(score.grade), borderColor: getGradeColor(score.grade) }"
+                >
+                  {{ score.grade }}
+                </span>
+                <span class="score-value">{{ formatScore(score.score) }}</span>
+                <span class="score-date">{{ new Date(score.playedAt).toLocaleDateString() }}</span>
+              </div>
+            </div>
+          </div>
+          <div v-else class="empty-state">
+            <p>还没有游玩记录</p>
+            <router-link to="/songs" class="explore-link">去浏览歌曲 →</router-link>
+          </div>
+        </template>
+
+        <!-- 最佳成绩 -->
+        <template v-else-if="activeTab === 'best'">
+          <div v-if="bestScores.length > 0" class="score-list">
+            <div v-for="score in bestScores" :key="score.beatmapId" class="score-item">
+              <div class="score-info">
+                <div class="score-title">{{ score.title || '未知歌曲' }}</div>
+                <div class="score-artist">{{ score.artist || 'Unknown' }}</div>
+              </div>
+              <div class="score-stats">
+                <span
+                  class="grade-badge"
+                  :style="{ color: getGradeColor(score.grade), borderColor: getGradeColor(score.grade) }"
+                >
+                  {{ score.grade }}
+                </span>
+                <span class="score-value">{{ formatScore(score.score) }}</span>
+                <span class="score-accuracy">{{ score.accuracy }}%</span>
+              </div>
+            </div>
+          </div>
+          <div v-else class="empty-state">
+            <p>还没有最佳成绩</p>
+          </div>
+        </template>
+
+        <!-- 评级分布 -->
+        <template v-else-if="activeTab === 'grades' && userStats">
+          <div class="grade-distribution">
+            <div
+              v-for="(count, grade) in userStats.grades"
+              :key="grade"
+              class="grade-item"
+            >
+              <div
+                class="grade-badge-large"
+                :style="{ color: getGradeColor(grade.toUpperCase()), borderColor: getGradeColor(grade.toUpperCase()) }"
+              >
+                {{ grade.toUpperCase() }}
+              </div>
+              <div class="grade-count">{{ count }}</div>
+              <div class="grade-bar">
+                <div
+                  class="grade-bar-fill"
+                  :style="{
+                    width: `${userStats.playCount > 0 ? (count / userStats.playCount) * 100 : 0}%`,
+                    background: getGradeColor(grade.toUpperCase())
+                  }"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -445,5 +609,205 @@ function goBack() {
 .explore-link:hover {
   transform: translateY(-2px);
   box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.4);
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin: 2rem 0 1.5rem;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  padding: 0.8rem 1.2rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+}
+
+.tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.tab-content {
+  min-height: 200px;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+}
+
+.stats-summary {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 1.5rem;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-item .stat-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.3rem;
+}
+
+.stat-item .stat-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.grade-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  justify-content: center;
+}
+
+.grade-badge {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.score-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.score-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: border-color 0.2s;
+}
+
+.score-item:hover {
+  border-color: var(--primary);
+}
+
+.score-info {
+  flex: 1;
+}
+
+.score-title {
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.2rem;
+}
+
+.score-artist {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.score-stats {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.score-value {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.score-date, .score-accuracy {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-muted);
+}
+
+.explore-link {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.5rem 1.5rem;
+  background: var(--primary);
+  color: #000;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.explore-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.4);
+}
+
+.grade-distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.grade-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.grade-badge-large {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.grade-count {
+  width: 40px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.grade-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-surface);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.grade-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s;
 }
 </style>
