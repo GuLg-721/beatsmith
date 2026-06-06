@@ -138,7 +138,7 @@ router.post('/login', async (req: Request, res: Response) => {
 router.get('/me', authMiddleware, (req: AuthRequest, res: Response) => {
   try {
     const db = getDB()
-    const result = db.exec('SELECT id, username, nickname, avatar, created_at FROM users WHERE id = ?', [req.user!.userId])
+    const result = db.exec('SELECT id, username, nickname, avatar, theme, created_at FROM users WHERE id = ?', [req.user!.userId])
 
     if (result.length === 0 || result[0].values.length === 0) {
       res.status(404).json({ message: '用户不存在' })
@@ -152,7 +152,8 @@ router.get('/me', authMiddleware, (req: AuthRequest, res: Response) => {
         username: row[1] as string,
         nickname: row[2] as string,
         avatar: row[3] as string | null,
-        created_at: row[4] as string
+        theme: row[4] as string,
+        created_at: row[5] as string
       }
     })
   } catch (err) {
@@ -236,6 +237,53 @@ router.put('/password', authMiddleware, async (req: AuthRequest, res: Response) 
   } catch (err) {
     console.error('Change password error:', err)
     res.status(500).json({ message: '修改密码失败' })
+  }
+})
+
+// PUT /api/auth/avatar
+router.put('/avatar', authMiddleware, (req: AuthRequest, res: Response) => {
+  try {
+    const { avatarUrl } = req.body
+
+    if (!avatarUrl) {
+      res.status(400).json({ message: '头像地址不能为空' })
+      return
+    }
+
+    const db = getDB()
+    db.run('UPDATE users SET avatar = ? WHERE id = ?', [avatarUrl, req.user!.userId])
+    scheduleSave()
+
+    res.status(200).json({
+      user: {
+        id: req.user!.userId,
+        avatar: avatarUrl
+      }
+    })
+  } catch (err) {
+    console.error('Update avatar error:', err)
+    res.status(500).json({ message: '更新头像失败' })
+  }
+})
+
+// PUT /api/auth/theme
+router.put('/theme', authMiddleware, (req: AuthRequest, res: Response) => {
+  try {
+    const { theme } = req.body
+
+    if (!theme || !['osu', 'cyberpunk', 'valorant'].includes(theme)) {
+      res.status(400).json({ message: '无效的主题' })
+      return
+    }
+
+    const db = getDB()
+    db.run('UPDATE users SET theme = ? WHERE id = ?', [theme, req.user!.userId])
+    scheduleSave()
+
+    res.status(200).json({ success: true })
+  } catch (err) {
+    console.error('Update theme error:', err)
+    res.status(500).json({ message: '更新主题失败' })
   }
 })
 
