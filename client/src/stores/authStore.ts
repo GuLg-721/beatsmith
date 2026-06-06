@@ -8,6 +8,12 @@ interface User {
   nickname: string
   avatar: string | null
   theme: string
+  skinSettings: {
+    soundScheme: string
+    customSounds: { click: string | null; hit: string | null; grade: string | null }
+    cursor: string
+    customCursor: string | null
+  } | null
   created_at: string
 }
 
@@ -146,6 +152,24 @@ export const useAuthStore = defineStore('auth', () => {
     applyTheme(saved)
   }
 
+  async function updateSkinSettings(skinSettings: any) {
+    const res = await fetch(`/api/users/${user.value?.id}/skin`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.value}`
+      },
+      body: JSON.stringify(skinSettings)
+    })
+
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.message)
+    }
+
+    user.value = { ...user.value!, skinSettings }
+  }
+
   return {
     user,
     token,
@@ -158,6 +182,7 @@ export const useAuthStore = defineStore('auth', () => {
     updatePassword,
     updateAvatar,
     updateTheme,
-    loadTheme
+    loadTheme,
+    updateSkinSettings
   }
 })
