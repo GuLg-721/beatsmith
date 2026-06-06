@@ -2,10 +2,15 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useGameStore } from '@/stores/gameStore'
 import { useAudioStore } from '@/stores/audioStore'
+import { useAuthStore } from '@/stores/authStore'
 import type { Note } from '@/engine/BeatGenerator'
 
 const gameStore = useGameStore()
 const audioStore = useAudioStore()
+const authStore = useAuthStore()
+
+// 皮肤设置
+const skinSettings = ref<any>(null)
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let animFrameId: number | null = null
@@ -40,13 +45,54 @@ function playTone(freq: number, dur: number, vol: number, wave: OscillatorType =
 }
 
 function playHitSound(type: string) {
-  const s: Record<string, [number, number, OscillatorType, number?]> = {
-    perfect: [880, 0.1, 'sine', 1760], great: [660, 0.08, 'sine'],
-    good: [440, 0.06, 'triangle'], miss: [200, 0.15, 'sawtooth', 100],
+  // 检查是否有自定义音效
+  if (skinSettings.value?.customSounds?.click) {
+    const audio = new Audio(skinSettings.value.customSounds.click)
+    audio.play()
+    return
   }
-  const d = s[type]; if (d) playTone(d[0], d[1], 0.25, d[2], d[3])
+
+  // 根据皮肤方案使用不同的音效
+  const schemes: Record<string, Record<string, [number, number, OscillatorType, number?]>> = {
+    default: {
+      perfect: [880, 0.1, 'sine', 1760], great: [660, 0.08, 'sine'],
+      good: [440, 0.06, 'triangle'], miss: [200, 0.15, 'sawtooth', 100],
+    },
+    electronic: {
+      perfect: [1200, 0.1, 'sawtooth', 2400], great: [900, 0.08, 'sawtooth'],
+      good: [600, 0.06, 'sawtooth'], miss: [150, 0.15, 'sawtooth', 50],
+    },
+    mechanical: {
+      perfect: [600, 0.1, 'square', 1200], great: [450, 0.08, 'square'],
+      good: [300, 0.06, 'triangle'], miss: [100, 0.15, 'sawtooth', 50],
+    }
+  }
+
+  const scheme = skinSettings.value?.soundScheme || 'default'
+  const s = schemes[scheme] || schemes.default
+  const d = s[type]
+  if (d) playTone(d[0], d[1], 0.25, d[2], d[3])
 }
-function playTapSound() { playTone(750, 0.08, 0.25, 'sine', 1100) }
+
+function playTapSound() {
+  // 检查是否有自定义音效
+  if (skinSettings.value?.customSounds?.hit) {
+    const audio = new Audio(skinSettings.value.customSounds.hit)
+    audio.play()
+    return
+  }
+
+  // 根据皮肤方案使用不同的音效
+  const schemes: Record<string, [number, number, OscillatorType, number?]> = {
+    default: [750, 0.08, 'sine', 1100],
+    electronic: [1000, 0.08, 'sawtooth', 1500],
+    mechanical: [500, 0.08, 'square', 800]
+  }
+
+  const scheme = skinSettings.value?.soundScheme || 'default'
+  const d = schemes[scheme] || schemes.default
+  playTone(d[0], d[1], 0.25, d[2], d[3])
+}
 
 // 波纹
 interface Ripple { x: number; y: number; life: number; color: string }
@@ -422,6 +468,17 @@ function resizeCanvas() {
 onMounted(() => {
   resizeCanvas(); window.addEventListener('resize', resizeCanvas)
   window.addEventListener('keydown', handleKeyDown); window.addEventListener('keyup', handleKeyUp)
+
+  // 加载皮肤设置
+  if (authStore.user?.id) {
+    import('@/utils/api').then(({ default: api }) => {
+      api.get(`/api/users/${authStore.user?.id}/skin`).then(res => {
+        skinSettings.value = res.data
+        applyCursor()
+      }).catch(() => {})
+    })
+  }
+
   if (gameStore.currentMapId) {
     import('@/utils/api').then(({ default: api }) => {
       api.get(`/api/maps/${gameStore.currentMapId}`).then(res => {
@@ -431,6 +488,24 @@ onMounted(() => {
     })
   }
 })
+
+function applyCursor() {
+  const canvas = canvasRef.value
+  if (!canvas) return
+
+  const cursor = skinSettings.value?.cursor || 'cross'
+  const customCursor = skinSettings.value?.customCursor
+
+  if (customCursor) {
+    canvas.style.cursor = `url(${customCursor}) 16 16, auto`
+  } else if (cursor === 'cross') {
+    canvas.style.cursor = `url("data:image/svg+xml,%3Csvg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cline x1='16' y1='4' x2='16' y2='28' stroke='white' stroke-width='2'/%3E%3Cline x1='4' y1='16' x2='28' y2='16' stroke='white' stroke-width='2'/%3E%3C/svg%3E") 16 16, auto`
+  } else if (cursor === 'square') {
+    canvas.style.cursor = `url("data:image/svg+xml,%3Csvg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='6' y='6' width='20' height='20' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E") 16 16, auto`
+  } else if (cursor === 'dot') {
+    canvas.style.cursor = `url("data:image/svg+xml,%3Csvg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='13' y='13' width='6' height='6' fill='white'/%3E%3Crect x='14' y='14' width='4' height='4' fill='%23fcee09'/%3E%3C/svg%3E") 4 4, auto`
+  }
+}
 
 onUnmounted(() => {
   if (animFrameId) cancelAnimationFrame(animFrameId)
