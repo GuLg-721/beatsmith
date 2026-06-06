@@ -250,7 +250,7 @@ function drawSpinner(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   if (td > 1200 && !isActive) alpha = Math.max(0, 1 - (td - 1200) / 600)
   ctx.globalAlpha = alpha
 
-  const R = 55 // 圈半径
+  const R = 55
 
   // 未激活：判定圈 + 旋转预览
   if (!isActive && !isCompleted) {
@@ -262,40 +262,34 @@ function drawSpinner(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
       ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2.5
       ctx.beginPath(); ctx.arc(x, y, NOTE_RADIUS * sc, 0, Math.PI * 2); ctx.stroke()
     }
-
     drawPerfectFlash(ctx, x, y, td)
-
-    // 外圈（待激活）
     ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)'; ctx.lineWidth = 6
     ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke()
-
-    // 旋转预览箭头
     ctx.save(); ctx.translate(x, y); ctx.rotate(Date.now() * 0.002)
     ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)'; ctx.lineWidth = 3
     ctx.beginPath(); ctx.arc(0, 0, R - 12, 0, Math.PI * 1.2); ctx.stroke()
     ctx.fillStyle = 'rgba(255, 215, 0, 0.6)'
     ctx.beginPath(); ctx.moveTo(R - 12, -6); ctx.lineTo(R - 5, 0); ctx.lineTo(R - 12, 6); ctx.closePath(); ctx.fill()
     ctx.restore()
-
-    // 中心提示
     ctx.font = 'bold 12px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-    ctx.fillStyle = 'rgba(255, 215, 0, 0.7)'
-    ctx.fillText('连点', x, y)
-
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.7)'; ctx.fillText('连点', x, y)
     ctx.globalAlpha = 1
     return
   }
 
-  // 激活/已完成：完整 Spinner
+  // 激活/已完成：绘制大红圈确认位置
+  if (isActive) {
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.3)'
+    ctx.beginPath(); ctx.arc(x, y, R + 20, 0, Math.PI * 2); ctx.fill()
+  }
+
   // 外圈背景
   ctx.strokeStyle = 'rgba(255, 215, 0, 0.2)'; ctx.lineWidth = 8
   ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke()
-
   // 进度弧
   ctx.strokeStyle = COLORS.spinner; ctx.lineWidth = 8; ctx.lineCap = 'round'
   ctx.beginPath(); ctx.arc(x, y, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress); ctx.stroke()
-
-  // 旋转箭头（激活时旋转）
+  // 旋转箭头
   const rotAngle = isActive ? spinnerAngle.value : Math.PI * 2
   ctx.save(); ctx.translate(x, y); ctx.rotate(rotAngle)
   ctx.strokeStyle = 'rgba(255, 215, 0, 0.9)'; ctx.lineWidth = 3
@@ -303,19 +297,10 @@ function drawSpinner(ctx: CanvasRenderingContext2D, note: Note, ct: number) {
   ctx.fillStyle = 'rgba(255, 215, 0, 0.9)'
   ctx.beginPath(); ctx.moveTo(R - 14, -6); ctx.lineTo(R - 6, 0); ctx.lineTo(R - 14, 6); ctx.closePath(); ctx.fill()
   ctx.restore()
-
   // 中心数字
   ctx.font = 'bold 22px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
   ctx.fillStyle = isActive ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.5)'
   ctx.fillText(`${gameStore.spinnerClicks}/${requiredClicks}`, x, y)
-
-  // 完成时的特效
-  if (isCompleted && progress >= 1) {
-    ctx.strokeStyle = 'rgba(255, 215, 0, 0.4)'; ctx.lineWidth = 3
-    const burstR = R + 10 + Math.sin(Date.now() * 0.01) * 5
-    ctx.beginPath(); ctx.arc(x, y, burstR, 0, Math.PI * 2); ctx.stroke()
-  }
-
   ctx.globalAlpha = 1
 }
 
