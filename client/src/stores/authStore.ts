@@ -5,8 +5,9 @@ import api from '@/utils/api'
 interface User {
   id: number
   username: string
-  nickname: string | null
+  nickname: string
   avatar: string | null
+  theme: string
   created_at: string
 }
 
@@ -63,5 +64,100 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('beatsmith_token')
   }
 
-  return { token, user, loading, isLoggedIn, login, register, fetchUser, logout }
+  async function updateProfile(nickname: string) {
+    const res = await fetch('/api/auth/profile', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.value}`
+      },
+      body: JSON.stringify({ nickname })
+    })
+
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.message)
+    }
+
+    const data = await res.json()
+    user.value = { ...user.value!, ...data.user }
+  }
+
+  async function updatePassword(oldPassword: string, newPassword: string) {
+    const res = await fetch('/api/auth/password', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.value}`
+      },
+      body: JSON.stringify({ oldPassword, newPassword })
+    })
+
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.message)
+    }
+  }
+
+  async function updateAvatar(avatarUrl: string) {
+    const res = await fetch('/api/auth/avatar', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.value}`
+      },
+      body: JSON.stringify({ avatarUrl })
+    })
+
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.message)
+    }
+
+    user.value = { ...user.value!, avatar: avatarUrl }
+  }
+
+  async function updateTheme(theme: string) {
+    const res = await fetch('/api/auth/theme', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.value}`
+      },
+      body: JSON.stringify({ theme })
+    })
+
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.message)
+    }
+
+    user.value = { ...user.value!, theme }
+    applyTheme(theme)
+  }
+
+  function applyTheme(theme: string) {
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem('theme', theme)
+  }
+
+  function loadTheme() {
+    const saved = localStorage.getItem('theme') || user.value?.theme || 'osu'
+    applyTheme(saved)
+  }
+
+  return {
+    user,
+    token,
+    isLoggedIn,
+    login,
+    register,
+    logout,
+    fetchUser,
+    updateProfile,
+    updatePassword,
+    updateAvatar,
+    updateTheme,
+    loadTheme
+  }
 })
