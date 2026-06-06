@@ -1,0 +1,62 @@
+/* osu! 霓虹 (default) */
+:root, [data-theme="osu"] {
+  --primary: #ff66aa;
+  --primary-rgb: 255, 102, 170;
+  --primary-glow: 0 0 20px rgba(255, 102, 170, 0.5);
+  --secondary: #bf00ff;
+  --secondary-rgb: 191, 0, 255;
+  --accent: #ff99cc;
+  --bg-deep: #0a0a1a;
+  --bg-surface: #12122a;
+  --bg-card: #1a1a3e;
+  --bg-card-hover: #222255;
+  --text: #ffffff;
+  --text-muted: #8888aa;
+  --border: rgba(255, 102, 170, 0.3);
+  --border-glow: rgba(255, 102, 170, 0.6);
+  --success: #00ff88;
+  --error: #ff4466;
+  --warning: #ffaa00;
+}
+
+/* 赛博朋克 */
+[data-theme="cyberpunk"] {
+  --primary: #fcee09;
+  --primary-rgb: 252, 238, 9;
+  --primary-glow: 0 0 20px rgba(252, 238, 9, 0.5);
+  --secondary: #00d4ff;
+  --secondary-rgb: 0, 212, 255;
+  --accent: #ff6600;
+  --bg-deep: #0a0a0a;
+  --bg-surface: #1a1a1a;
+  --bg-card: #2a2a2a;
+  --bg-card-hover: #3a3a3a;
+  --text: #ffffff;
+  --text-muted: #888888;
+  --border: rgba(252, 238, 9, 0.3);
+  --border-glow: rgba(252, 238, 9, 0.6);
+  --success: #00ff88;
+  --error: #ff4466;
+  --warning: #ff6600;
+}
+
+/* Valorant */
+[data-theme="valorant"] {
+  --primary: #ff4655;
+  --primary-rgb: 255, 70, 85;
+  --primary-glow: 0 0 20px rgba(255, 70, 85, 0.5);
+  --secondary: #bd3944;
+  --secondary-rgb: 189, 57, 68;
+  --accent: #ece8e1;
+  --bg-deep: #0a0a0a;
+  --bg-surface: #1a1a1a;
+  --bg-card: #2a2a2a;
+  --bg-card-hover: #3a3a3a;
+  --text: #ffffff;
+  --text-muted: #888888;
+  --border: rgba(255, 70, 85, 0.3);
+  --border-glow: rgba(255, 70, 85, 0.6);
+  --success: #00ff88;
+  --error: #ff4466;
+  --warning: #ffaa00;
+}
