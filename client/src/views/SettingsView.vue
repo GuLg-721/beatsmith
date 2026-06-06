@@ -46,11 +46,22 @@ async function saveNickname() {
     saving.value = false
   }
 }
+
+function goBack() {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/')
+  }
+}
 </script>
 
 <template>
   <div class="settings-page">
-    <h1 class="page-title">⚙️ 设置</h1>
+    <nav class="top-nav">
+      <button class="back-btn" @click="goBack">← 返回</button>
+      <span class="nav-title">⚙️ 设置</span>
+    </nav>
 
     <!-- 个人信息卡片 -->
     <div class="settings-card">
@@ -89,18 +100,42 @@ async function saveNickname() {
 </template>
 
 <style scoped>
+.top-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.back-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.back-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.nav-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+
 .settings-page {
   min-height: 100vh;
   padding: 2rem;
   max-width: 600px;
   margin: 0 auto;
-}
-
-.page-title {
-  color: var(--primary);
-  font-size: 2rem;
-  margin-bottom: 2rem;
-  text-shadow: var(--primary-glow);
 }
 
 .settings-card {
