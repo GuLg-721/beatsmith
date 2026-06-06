@@ -106,7 +106,7 @@ watch(searchQuery, () => {
       </NButton>
       <router-link v-if="authStore.isLoggedIn" :to="`/profile/${authStore.user?.id}`" class="profile-link">
         <span class="profile-icon">👤</span>
-        <span class="profile-text">{{ authStore.user?.nickname || authStore.user?.username }}</span>
+        <span class="profile-text">个人档案</span>
       </router-link>
       <router-link v-else to="/login">
         <NButton>登录</NButton>
