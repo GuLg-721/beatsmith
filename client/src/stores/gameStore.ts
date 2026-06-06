@@ -227,10 +227,9 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function clickSpinner() {
-    if (!activeSpinner.value) return
+    if (!activeSpinner.value) return null
     spinnerClicks.value++
     const requiredClicks = getRequiredClicks(activeSpinner.value)
-    const progress = Math.min(1, spinnerClicks.value / requiredClicks)
 
     // 每次点击加分
     score.value += 30
@@ -240,6 +239,7 @@ export const useGameStore = defineStore('game', () => {
     // 检查是否完成
     if (spinnerClicks.value >= requiredClicks) {
       perfect.value++
+      activeSpinner.value = null // 完成后清除
       return 'perfect'
     }
     return null
