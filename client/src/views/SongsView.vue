@@ -174,7 +174,17 @@ watch(searchQuery, () => {
   position: relative;
   z-index: 1;
   min-height: 100vh;
-  padding: 3.5rem 2rem 2rem;
+  padding: 3.5rem 3rem 2rem;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2rem;
+  margin-top: -1.875rem;
 }
 
 .top-bar {
