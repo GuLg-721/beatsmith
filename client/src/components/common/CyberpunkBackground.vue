@@ -184,13 +184,13 @@ onMounted(() => {
     })
 
     // Draw corner brackets
-    const bracketSize = 60
-    const bracketOffset = 50
+    const bracketSize = 50
+    const bracketOffset = 45
     const bracketPulse = Math.sin(time) * 0.1 + 0.5
 
     ctx!.strokeStyle = `rgba(252, 238, 9, ${bracketPulse})`
     ctx!.lineWidth = 2
-    ctx!.lineCap = 'square'
+    ctx!.lineCap = 'round'
 
     // Top-left
     ctx!.beginPath()
