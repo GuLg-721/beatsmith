@@ -6,6 +6,7 @@ import authRoutes from './routes/auth'
 import uploadRoutes from './routes/upload'
 import mapsRoutes from './routes/maps'
 import scoresRoutes from './routes/scores'
+import leaderboardRoutes from './routes/leaderboard'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -27,6 +28,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/upload', uploadRoutes)
 app.use('/api/maps', mapsRoutes)
 app.use('/api/maps', scoresRoutes)
+app.use('/api/leaderboard', leaderboardRoutes)
 
 // 启动服务器
 async function start() {
