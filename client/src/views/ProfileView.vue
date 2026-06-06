@@ -12,6 +12,22 @@ const profileUser = computed(() => authStore.user)
 const loading = ref(true)
 const recentPlays = ref<any[]>([])
 
+// 预设头像数据（与 AvatarPicker 保持一致）
+const presetAvatars: Record<string, { color: string; path: string }> = {
+  hexagon: { color: '#00d4ff', path: 'M50 5 L95 27.5 L95 72.5 L50 95 L5 72.5 L5 27.5 Z' },
+  circle: { color: '#ff66aa', path: 'M50 5 A45 45 0 1 1 49.99 5 Z' },
+  triangle: { color: '#00ff88', path: 'M50 5 L95 90 L5 90 Z' },
+  diamond: { color: '#bf00ff', path: 'M50 5 L90 50 L50 95 L10 50 Z' },
+  star: { color: '#fcee09', path: 'M50 5 L61 35 L95 35 L68 57 L79 90 L50 70 L21 90 L32 57 L5 35 L39 35 Z' },
+  pentagon: { color: '#00d4ff', path: 'M50 5 L95 38 L77 90 L23 90 L5 38 Z' },
+  octagon: { color: '#ff4466', path: 'M65 5 L90 20 L95 50 L80 80 L50 95 L20 80 L5 50 L10 20 Z' },
+  cross: { color: '#ffffff', path: 'M35 5 L65 5 L65 35 L95 35 L95 65 L65 65 L65 95 L35 95 L35 65 L5 65 L5 35 L35 35 Z' }
+}
+
+function getPresetAvatar(id: string) {
+  return presetAvatars[id]
+}
+
 const isOwnProfile = computed(() => {
   return authStore.user?.id === Number(route.params.id)
 })
@@ -54,8 +70,20 @@ function goBack() {
       <div class="avatar-section">
         <div v-if="profileUser.avatar?.startsWith('preset:')" class="avatar-display">
           <svg viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="45" fill="var(--primary)" opacity="0.3" />
-            <text x="50" y="55" text-anchor="middle" fill="var(--primary)" font-size="40">👤</text>
+            <defs>
+              <filter id="profile-glow">
+                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            <path
+              :d="getPresetAvatar(profileUser.avatar.replace('preset:', ''))?.path"
+              :fill="getPresetAvatar(profileUser.avatar.replace('preset:', ''))?.color"
+              filter="url(#profile-glow)"
+            />
           </svg>
         </div>
         <div v-else-if="profileUser.avatar" class="avatar-display">
