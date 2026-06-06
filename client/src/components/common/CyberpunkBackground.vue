@@ -49,7 +49,7 @@ onMounted(() => {
     ctx!.clearRect(0, 0, canvas!.width, canvas!.height)
 
     const gridSize = props.reduced ? 60 : 40
-    ctx!.strokeStyle = 'rgba(252, 238, 9, 0.06)'
+    ctx!.strokeStyle = 'rgba(252, 238, 9, 0.15)'
     ctx!.lineWidth = 0.5
     for (let x = 0; x < canvas!.width; x += gridSize) {
       ctx!.beginPath()
@@ -65,14 +65,14 @@ onMounted(() => {
     }
 
     if (!props.reduced) {
-      ctx!.fillStyle = 'rgba(0, 212, 255, 0.03)'
-      ctx!.fillRect(0, scanY, canvas!.width, 2)
+      ctx!.fillStyle = 'rgba(0, 212, 255, 0.08)'
+      ctx!.fillRect(0, scanY, canvas!.width, 3)
       scanY = (scanY + 1) % canvas!.height
     }
 
     dataStrings.forEach(ds => {
       ctx!.font = '12px monospace'
-      ctx!.fillStyle = `rgba(252, 238, 9, ${ds.opacity})`
+      ctx!.fillStyle = `rgba(252, 238, 9, ${ds.opacity * 1.5})`
       ctx!.fillText(ds.text, ds.x, ds.y)
       ds.y -= ds.speed
       if (ds.y < -20) {

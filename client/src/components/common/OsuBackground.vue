@@ -24,8 +24,8 @@ function createParticle(canvas: HTMLCanvasElement): Particle {
     y: Math.random() * canvas.height,
     vx: (Math.random() - 0.5) * (props.reduced ? 0.2 : 0.5),
     vy: (Math.random() - 0.5) * (props.reduced ? 0.2 : 0.5),
-    radius: Math.random() * 2 + 1,
-    opacity: Math.random() * 0.4 + 0.2
+    radius: Math.random() * 2 + 1.5,
+    opacity: Math.random() * 0.5 + 0.3
   }
 }
 
@@ -92,7 +92,7 @@ onMounted(() => {
             ctx!.beginPath()
             ctx!.moveTo(p.x, p.y)
             ctx!.lineTo(p2.x, p2.y)
-            ctx!.strokeStyle = `rgba(191, 0, 255, ${(1 - dist2 / 120) * 0.15})`
+            ctx!.strokeStyle = `rgba(191, 0, 255, ${(1 - dist2 / 120) * 0.25})`
             ctx!.lineWidth = 0.5
             ctx!.stroke()
           }
