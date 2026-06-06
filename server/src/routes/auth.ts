@@ -161,4 +161,35 @@ router.get('/me', authMiddleware, (req: AuthRequest, res: Response) => {
   }
 })
 
+// PUT /api/auth/profile
+router.put('/profile', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { nickname } = req.body
+
+    if (!nickname || nickname.length < 2 || nickname.length > 20) {
+      res.status(400).json({ message: '昵称长度应为 2-20 位' })
+      return
+    }
+
+    if (!/^[a-zA-Z0-9一-龥_]+$/.test(nickname)) {
+      res.status(400).json({ message: '昵称只能包含字母、数字、中文和下划线' })
+      return
+    }
+
+    const db = getDB()
+    db.run('UPDATE users SET nickname = ? WHERE id = ?', [nickname, req.user!.userId])
+    scheduleSave()
+
+    res.status(200).json({
+      user: {
+        id: req.user!.userId,
+        nickname
+      }
+    })
+  } catch (err) {
+    console.error('Update profile error:', err)
+    res.status(500).json({ message: '更新失败' })
+  }
+})
+
 export default router
