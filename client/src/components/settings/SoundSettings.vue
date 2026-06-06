@@ -17,6 +17,8 @@ const customSounds = ref<{ click: string | null; hit: string | null; grade: stri
   hit: null,
   grade: null
 })
+const currentCursor = ref('cross')
+const customCursor = ref<string | null>(null)
 const uploading = ref(false)
 const fileInput = ref<HTMLInputElement>()
 
@@ -25,6 +27,8 @@ onMounted(async () => {
     const res = await api.get(`/api/users/${authStore.user?.id}/skin`)
     currentScheme.value = res.data.soundScheme || 'default'
     customSounds.value = res.data.customSounds || { click: null, hit: null, grade: null }
+    currentCursor.value = res.data.cursor || 'cross'
+    customCursor.value = res.data.customCursor || null
   } catch (err) {
     console.error('Failed to load skin settings:', err)
   }
@@ -40,8 +44,8 @@ async function saveSettings() {
     await api.put(`/api/users/${authStore.user?.id}/skin`, {
       soundScheme: currentScheme.value,
       customSounds: customSounds.value,
-      cursor: authStore.user?.skinSettings?.cursor || 'cross',
-      customCursor: authStore.user?.skinSettings?.customCursor || null
+      cursor: currentCursor.value,
+      customCursor: customCursor.value
     })
   } catch (err) {
     console.error('Failed to save skin settings:', err)
