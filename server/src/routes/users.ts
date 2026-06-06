@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import { getDB } from '../db'
+import { getDB, scheduleSave } from '../db'
 
 const router = Router()
 
@@ -149,6 +149,75 @@ router.get('/:id/best', (req: Request, res: Response) => {
   } catch (err) {
     console.error('Get user best scores error:', err)
     res.status(500).json({ message: '获取用户最佳成绩失败' })
+  }
+})
+
+// GET /api/users/:id/skin — 获取用户皮肤设置
+router.get('/:id/skin', (req: Request, res: Response) => {
+  try {
+    const db = getDB()
+    const userId = parseInt(req.params.id)
+
+    if (isNaN(userId)) {
+      res.status(400).json({ message: '无效的用户 ID' })
+      return
+    }
+
+    const result = db.exec(
+      'SELECT skin_settings FROM users WHERE id = ?',
+      [userId]
+    )
+
+    if (result.length === 0 || result[0].values.length === 0) {
+      res.status(404).json({ message: '用户不存在' })
+      return
+    }
+
+    const skinSettings = result[0].values[0][0]
+    const parsed = skinSettings ? JSON.parse(skinSettings as string) : {
+      soundScheme: 'default',
+      customSounds: { click: null, hit: null, grade: null },
+      cursor: 'cross',
+      customCursor: null
+    }
+
+    res.status(200).json(parsed)
+  } catch (err) {
+    console.error('Get skin settings error:', err)
+    res.status(500).json({ message: '获取皮肤设置失败' })
+  }
+})
+
+// PUT /api/users/:id/skin — 更新用户皮肤设置
+router.put('/:id/skin', (req: Request, res: Response) => {
+  try {
+    const db = getDB()
+    const userId = parseInt(req.params.id)
+
+    if (isNaN(userId)) {
+      res.status(400).json({ message: '无效的用户 ID' })
+      return
+    }
+
+    const { soundScheme, customSounds, cursor, customCursor } = req.body
+
+    const skinSettings = JSON.stringify({
+      soundScheme: soundScheme || 'default',
+      customSounds: customSounds || { click: null, hit: null, grade: null },
+      cursor: cursor || 'cross',
+      customCursor: customCursor || null
+    })
+
+    db.run(
+      'UPDATE users SET skin_settings = ? WHERE id = ?',
+      [skinSettings, userId]
+    )
+    scheduleSave()
+
+    res.status(200).json({ success: true })
+  } catch (err) {
+    console.error('Update skin settings error:', err)
+    res.status(500).json({ message: '更新皮肤设置失败' })
   }
 })
 
