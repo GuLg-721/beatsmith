@@ -89,13 +89,13 @@ function handleCTA() {
   font-size: clamp(3rem, 8vw, 6rem);
   font-weight: 700;
   letter-spacing: -0.03em;
-  color: var(--ink);
+  color: var(--primary);
   display: flex;
   align-items: center;
   gap: 0.3em;
   text-shadow:
-    0 0 40px oklch(0.62 0.22 350 / 0.4),
-    0 0 80px oklch(0.62 0.22 350 / 0.2);
+    0 0 40px rgba(var(--primary-rgb), 0.4),
+    0 0 80px rgba(var(--primary-rgb), 0.2);
   animation: titlePulse 4s ease-in-out infinite;
 }
 
@@ -106,13 +106,13 @@ function handleCTA() {
 @keyframes titlePulse {
   0%, 100% {
     text-shadow:
-      0 0 40px oklch(0.62 0.22 350 / 0.4),
-      0 0 80px oklch(0.62 0.22 350 / 0.2);
+      0 0 40px rgba(var(--primary-rgb), 0.4),
+      0 0 80px rgba(var(--primary-rgb), 0.2);
   }
   50% {
     text-shadow:
-      0 0 60px oklch(0.62 0.22 350 / 0.6),
-      0 0 120px oklch(0.62 0.22 350 / 0.3);
+      0 0 60px rgba(var(--primary-rgb), 0.6),
+      0 0 120px rgba(var(--primary-rgb), 0.3);
   }
 }
 
@@ -145,8 +145,8 @@ function handleCTA() {
   overflow: hidden;
   transition: all 0.3s ease-out;
   box-shadow:
-    0 0 15px oklch(0.62 0.22 350 / 0.2),
-    inset 0 0 15px oklch(0.62 0.22 350 / 0.1);
+    0 0 15px rgba(var(--primary-rgb), 0.2),
+    inset 0 0 15px rgba(var(--primary-rgb), 0.1);
 }
 
 .cta-button::before {
@@ -159,11 +159,11 @@ function handleCTA() {
 }
 
 .cta-button:hover {
-  border-color: var(--primary-hover);
+  border-color: var(--primary);
   box-shadow:
-    0 0 30px oklch(0.62 0.22 350 / 0.4),
-    0 0 60px oklch(0.62 0.22 350 / 0.2),
-    inset 0 0 20px oklch(0.62 0.22 350 / 0.15);
+    0 0 30px rgba(var(--primary-rgb), 0.4),
+    0 0 60px rgba(var(--primary-rgb), 0.2),
+    inset 0 0 20px rgba(var(--primary-rgb), 0.15);
   transform: scale(1.05);
 }
 
