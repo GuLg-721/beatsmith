@@ -502,6 +502,7 @@ onMounted(() => {
   if (gameStore.currentMapId) {
     import('@/utils/api').then(({ default: api }) => {
       api.get(`/api/maps/${gameStore.currentMapId}`).then(res => {
+  render() // 启动渲染循环
         if (res.data.map?.coverImage) loadCover(`/uploads/${res.data.map.coverImage}`)
       })
     })
