@@ -174,7 +174,7 @@ watch(searchQuery, () => {
   position: relative;
   z-index: 1;
   min-height: 100vh;
-  padding: 0 2rem 2rem;
+  padding: 3.5rem 2rem 2rem;
 }
 
 .top-bar {
