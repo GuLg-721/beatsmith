@@ -55,8 +55,7 @@ onMounted(() => {
   window.addEventListener('mousemove', onMouseMove)
 
   function animate() {
-    ctx!.fillStyle = 'rgba(10, 10, 26, 0.12)'
-    ctx!.fillRect(0, 0, canvas!.width, canvas!.height)
+    ctx!.clearRect(0, 0, canvas!.width, canvas!.height)
 
     particles.forEach((p, i) => {
       if (!props.reduced) {

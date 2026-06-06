@@ -46,8 +46,7 @@ onMounted(() => {
   let scanY = 0
 
   function animate() {
-    ctx!.fillStyle = 'rgba(10, 10, 10, 0.08)'
-    ctx!.fillRect(0, 0, canvas!.width, canvas!.height)
+    ctx!.clearRect(0, 0, canvas!.width, canvas!.height)
 
     const gridSize = props.reduced ? 60 : 40
     ctx!.strokeStyle = 'rgba(252, 238, 9, 0.06)'
