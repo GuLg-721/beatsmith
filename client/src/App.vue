@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/authStore'
 const authStore = useAuthStore()
 
 onMounted(() => {
+  authStore.loadTheme()
   if (authStore.isLoggedIn) {
     authStore.fetchUser()
   }
