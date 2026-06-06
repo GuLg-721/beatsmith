@@ -192,4 +192,51 @@ router.put('/profile', authMiddleware, async (req: AuthRequest, res: Response) =
   }
 })
 
+// PUT /api/auth/password
+router.put('/password', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { oldPassword, newPassword } = req.body
+
+    if (!oldPassword || !newPassword) {
+      res.status(400).json({ message: '请填写所有字段' })
+      return
+    }
+
+    if (newPassword.length < 8) {
+      res.status(400).json({ message: '新密码长度至少 8 位' })
+      return
+    }
+
+    if (!/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      res.status(400).json({ message: '新密码必须包含字母和数字' })
+      return
+    }
+
+    const db = getDB()
+    const result = db.exec('SELECT password FROM users WHERE id = ?', [req.user!.userId])
+
+    if (result.length === 0 || result[0].values.length === 0) {
+      res.status(404).json({ message: '用户不存在' })
+      return
+    }
+
+    const currentPassword = result[0].values[0][0] as string
+    const valid = await bcrypt.compare(oldPassword, currentPassword)
+
+    if (!valid) {
+      res.status(400).json({ message: '原密码错误' })
+      return
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10)
+    db.run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, req.user!.userId])
+    scheduleSave()
+
+    res.status(200).json({ success: true })
+  } catch (err) {
+    console.error('Change password error:', err)
+    res.status(500).json({ message: '修改密码失败' })
+  }
+})
+
 export default router
