@@ -11,9 +11,31 @@ const authStore = useAuthStore()
 const profileUser = ref<any>(null)
 const loading = ref(true)
 
+// 模拟最近游玩记录
+const recentPlays = ref([
+  { id: 1, title: 'Faded', artist: 'Alan Walker', grade: 'S', score: 985000, accuracy: 96.5, date: '2026-06-04' },
+  { id: 2, title: 'Counting Stars', artist: 'OneRepublic', grade: 'A', score: 872000, accuracy: 89.2, date: '2026-06-03' },
+  { id: 3, title: 'Sugar', artist: 'Maroon 5', grade: 'SS', score: 998000, accuracy: 99.1, date: '2026-06-02' },
+  { id: 4, title: 'Shape of You', artist: 'Ed Sheeran', grade: 'B', score: 756000, accuracy: 82.3, date: '2026-06-01' },
+  { id: 5, title: 'Bad Guy', artist: 'Billie Eilish', grade: 'S', score: 976000, accuracy: 95.8, date: '2026-05-31' }
+])
+
 const isOwnProfile = computed(() => {
   return authStore.user?.id === Number(route.params.id)
 })
+
+function getGradeColor(grade: string) {
+  const colors: Record<string, string> = {
+    'SSS': '#ff66aa',
+    'SS': '#bf00ff',
+    'S': '#00d4ff',
+    'A': '#00ff88',
+    'B': '#fcee09',
+    'C': '#ff6600',
+    'D': '#ff4466'
+  }
+  return colors[grade] || '#888888'
+}
 
 onMounted(async () => {
   if (authStore.isLoggedIn) {
@@ -34,6 +56,14 @@ function goBack() {
 <template>
   <div class="profile-page">
     <ThemeBackground :reduced="true" />
+
+    <!-- 主题装饰：左上角 -->
+    <div class="corner-decor top-left"></div>
+    <!-- 主题装饰：右下角 -->
+    <div class="corner-decor bottom-right"></div>
+    <!-- 主题装饰：水平线 -->
+    <div class="decor-line horizontal"></div>
+
     <nav class="top-nav">
       <button class="back-btn" @click="goBack">← 返回</button>
       <span class="nav-title">👤 个人档案</span>
@@ -79,6 +109,30 @@ function goBack() {
           <div class="stat-label">最高评级</div>
         </div>
       </div>
+
+      <!-- 最近游玩记录 -->
+      <div class="recent-section">
+        <h3 class="section-title">🎵 最近游玩</h3>
+        <div v-if="recentPlays.length > 0" class="recent-list">
+          <div v-for="play in recentPlays" :key="play.id" class="recent-item">
+            <div class="recent-info">
+              <div class="recent-title">{{ play.title }}</div>
+              <div class="recent-artist">{{ play.artist }}</div>
+            </div>
+            <div class="recent-stats">
+              <span class="grade-badge" :style="{ color: getGradeColor(play.grade), borderColor: getGradeColor(play.grade) }">
+                {{ play.grade }}
+              </span>
+              <div class="score">{{ play.score.toLocaleString() }}</div>
+              <div class="accuracy">{{ play.accuracy }}%</div>
+            </div>
+          </div>
+        </div>
+        <div v-else class="empty-recent">
+          <p>还没有游玩记录</p>
+          <router-link to="/songs" class="explore-link">去浏览歌曲 →</router-link>
+        </div>
+      </div>
     </div>
 
     <div v-else class="empty-state">
@@ -93,8 +147,45 @@ function goBack() {
   z-index: 1;
   min-height: 100vh;
   padding: 2rem;
-  max-width: 600px;
+  max-width: 700px;
   margin: 0 auto;
+}
+
+/* 主题装饰元素 */
+.corner-decor {
+  position: fixed;
+  width: 80px;
+  height: 80px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.corner-decor.top-left {
+  top: 60px;
+  left: 30px;
+  border-left: 2px solid var(--primary);
+  border-top: 2px solid var(--primary);
+  opacity: 0.4;
+}
+
+.corner-decor.bottom-right {
+  bottom: 30px;
+  right: 30px;
+  border-right: 2px solid var(--primary);
+  border-bottom: 2px solid var(--primary);
+  opacity: 0.4;
+}
+
+.decor-line.horizontal {
+  position: fixed;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  opacity: 0.1;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .top-nav {
@@ -172,6 +263,12 @@ function goBack() {
   background: var(--bg-surface);
   border: 2px solid var(--border);
   overflow: hidden;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.avatar-display:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.3);
 }
 
 .avatar-display svg {
@@ -218,6 +315,12 @@ function goBack() {
   border-radius: 12px;
   padding: 1.2rem;
   text-align: center;
+  transition: border-color 0.3s, transform 0.2s;
+}
+
+.stat-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
 }
 
 .stat-value {
@@ -230,5 +333,115 @@ function goBack() {
 .stat-label {
   font-size: 0.8rem;
   color: var(--text-muted);
+}
+
+/* 最近游玩记录 */
+.recent-section {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 1rem;
+  padding-left: 0.5rem;
+  border-left: 3px solid var(--primary);
+}
+
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.recent-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.2rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.recent-item:hover {
+  border-color: var(--primary);
+  transform: translateX(4px);
+}
+
+.recent-info {
+  flex: 1;
+}
+
+.recent-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.2rem;
+}
+
+.recent-artist {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.recent-stats {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.grade-badge {
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid;
+  border-radius: 4px;
+  min-width: 35px;
+  text-align: center;
+}
+
+.score {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 80px;
+  text-align: right;
+}
+
+.accuracy {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  min-width: 50px;
+  text-align: right;
+}
+
+.empty-recent {
+  text-align: center;
+  padding: 2rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-muted);
+}
+
+.explore-link {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.5rem 1.5rem;
+  background: var(--primary);
+  color: #000;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.explore-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.4);
 }
 </style>
