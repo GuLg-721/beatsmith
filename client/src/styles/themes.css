@@ -7,16 +7,19 @@
   --secondary-rgb: 191, 0, 255;
   --accent: #ff99cc;
   --bg-deep: #0a0a1a;
-  --bg-surface: #12122a;
-  --bg-card: #1a1a3e;
-  --bg-card-hover: #222255;
+  --bg-surface: #1a1a2e;
+  --bg-card: #252545;
+  --bg-card-hover: #2d2d55;
   --text: #ffffff;
-  --text-muted: #8888aa;
-  --border: rgba(255, 102, 170, 0.3);
-  --border-glow: rgba(255, 102, 170, 0.6);
+  --text-muted: #aaaacc;
+  --border: rgba(255, 102, 170, 0.4);
+  --border-glow: rgba(255, 102, 170, 0.7);
   --success: #00ff88;
   --error: #ff4466;
   --warning: #ffaa00;
+  --input-bg: #1a1a2e;
+  --input-border: rgba(255, 102, 170, 0.3);
+  --input-focus: #ff66aa;
 
   /* Background particles */
   --bg-particle-1: #ff66aa;
@@ -34,16 +37,19 @@
   --secondary-rgb: 0, 212, 255;
   --accent: #ff6600;
   --bg-deep: #0a0a0a;
-  --bg-surface: #1a1a1a;
-  --bg-card: #2a2a2a;
-  --bg-card-hover: #3a3a3a;
+  --bg-surface: #181818;
+  --bg-card: #282828;
+  --bg-card-hover: #353535;
   --text: #ffffff;
-  --text-muted: #888888;
-  --border: rgba(252, 238, 9, 0.3);
-  --border-glow: rgba(252, 238, 9, 0.6);
+  --text-muted: #aaaaaa;
+  --border: rgba(252, 238, 9, 0.4);
+  --border-glow: rgba(252, 238, 9, 0.7);
   --success: #00ff88;
   --error: #ff4466;
   --warning: #ff6600;
+  --input-bg: #181818;
+  --input-border: rgba(252, 238, 9, 0.3);
+  --input-focus: #fcee09;
 
   /* Background cyberpunk effects */
   --bg-grid-color: rgba(252, 238, 9, 0.08);
@@ -62,16 +68,19 @@
   --secondary-rgb: 189, 57, 68;
   --accent: #ece8e1;
   --bg-deep: #0a0a0a;
-  --bg-surface: #1a1a1a;
-  --bg-card: #2a2a2a;
-  --bg-card-hover: #3a3a3a;
+  --bg-surface: #181818;
+  --bg-card: #252525;
+  --bg-card-hover: #333333;
   --text: #ffffff;
-  --text-muted: #888888;
-  --border: rgba(255, 70, 85, 0.3);
-  --border-glow: rgba(255, 70, 85, 0.6);
+  --text-muted: #aaaaaa;
+  --border: rgba(255, 70, 85, 0.4);
+  --border-glow: rgba(255, 70, 85, 0.7);
   --success: #00ff88;
   --error: #ff4466;
   --warning: #ffaa00;
+  --input-bg: #181818;
+  --input-border: rgba(255, 70, 85, 0.3);
+  --input-focus: #ff4655;
 
   /* Background Valorant lines */
   --bg-line-1: #ff4655;

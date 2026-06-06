@@ -185,17 +185,18 @@ function goBack() {
 
 .form-group input {
   padding: 0.7rem 1rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--input-border, var(--border));
   border-radius: 8px;
-  background: var(--bg-surface);
+  background: var(--input-bg, var(--bg-surface));
   color: var(--text);
   font-size: 0.95rem;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: var(--primary);
+  border-color: var(--input-focus, var(--primary));
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2);
 }
 
 .form-group input::placeholder {

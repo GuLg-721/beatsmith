@@ -1,0 +1,128 @@
+<h2>🎨 三种主题背景效果对比</h2>
+<p class="subtitle">每个主题都有独特的动态背景动画，点击选择你喜欢的方案</p>
+
+<div class="cards">
+  <!-- osu! 霓虹主题 -->
+  <div class="card" data-choice="osu" onclick="toggleSelect(this)">
+    <div class="card-image" style="height: 200px; background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 50%, #0a0a1a 100%); position: relative; overflow: hidden;">
+      <!-- 粒子效果模拟 -->
+      <div style="position: absolute; width: 100%; height: 100%;">
+        <div style="position: absolute; width: 4px; height: 4px; background: #ff66aa; border-radius: 50%; top: 20%; left: 30%; box-shadow: 0 0 10px #ff66aa, 0 0 20px #ff66aa; animation: float 3s ease-in-out infinite;"></div>
+        <div style="position: absolute; width: 3px; height: 3px; background: #bf00ff; border-radius: 50%; top: 60%; left: 70%; box-shadow: 0 0 8px #bf00ff; animation: float 4s ease-in-out infinite 0.5s;"></div>
+        <div style="position: absolute; width: 5px; height: 5px; background: #ff99cc; border-radius: 50%; top: 40%; left: 50%; box-shadow: 0 0 12px #ff99cc; animation: float 3.5s ease-in-out infinite 1s;"></div>
+        <div style="position: absolute; width: 3px; height: 3px; background: #ff66aa; border-radius: 50%; top: 70%; left: 20%; box-shadow: 0 0 8px #ff66aa; animation: float 4.5s ease-in-out infinite 0.3s;"></div>
+        <div style="position: absolute; width: 4px; height: 4px; background: #bf00ff; border-radius: 50%; top: 30%; left: 80%; box-shadow: 0 0 10px #bf00ff; animation: float 3.2s ease-in-out infinite 0.8s;"></div>
+      </div>
+      <div style="position: absolute; bottom: 10px; left: 10px; right: 10px; text-align: center; color: #ff66aa; font-weight: bold; text-shadow: 0 0 10px #ff66aa;">✨ 粒子连线 + 霓虹光效</div>
+    </div>
+    <div class="card-body">
+      <h3>osu! 霓虹</h3>
+      <p>粉色粒子 + 紫色连线 + 鼠标引力交互</p>
+      <div style="margin-top: 8px; font-size: 12px; color: #888;">
+        主色: #ff66aa | 辅色: #bf00ff
+      </div>
+    </div>
+  </div>
+
+  <!-- 赛博朋克主题 -->
+  <div class="card" data-choice="cyberpunk" onclick="toggleSelect(this)">
+    <div class="card-image" style="height: 200px; background: linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 100%); position: relative; overflow: hidden;">
+      <!-- 网格线效果 -->
+      <div style="position: absolute; width: 100%; height: 100%; background-image:
+        linear-gradient(rgba(252, 238, 9, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(252, 238, 9, 0.1) 1px, transparent 1px);
+        background-size: 30px 30px; animation: gridMove 2s linear infinite;"></div>
+      <!-- 扫描线 -->
+      <div style="position: absolute; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, #00d4ff, transparent); animation: scanline 3s linear infinite;"></div>
+      <!-- 数据流 -->
+      <div style="position: absolute; top: 20%; left: 10%; color: #fcee09; font-family: monospace; font-size: 10px; opacity: 0.6; animation: dataFlow 4s linear infinite;">01001010</div>
+      <div style="position: absolute; top: 50%; right: 15%; color: #00d4ff; font-family: monospace; font-size: 10px; opacity: 0.6; animation: dataFlow 3s linear infinite 1s;">11010011</div>
+      <div style="position: absolute; bottom: 30%; left: 40%; color: #fcee09; font-family: monospace; font-size: 10px; opacity: 0.6; animation: dataFlow 5s linear infinite 0.5s;">10110100</div>
+      <div style="position: absolute; bottom: 10px; left: 10px; right: 10px; text-align: center; color: #fcee09; font-weight: bold; text-shadow: 0 0 10px #fcee09;">🌐 网格扫描 + 数据流</div>
+    </div>
+    <div class="card-body">
+      <h3>赛博朋克</h3>
+      <p>黄色网格 + 青色扫描线 + 数字雨效果</p>
+      <div style="margin-top: 8px; font-size: 12px; color: #888;">
+        主色: #fcee09 | 辅色: #00d4ff
+      </div>
+    </div>
+  </div>
+
+  <!-- Valorant主题 -->
+  <div class="card" data-choice="valorant" onclick="toggleSelect(this)">
+    <div class="card-image" style="height: 200px; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%); position: relative; overflow: hidden;">
+      <!-- 几何线条 -->
+      <div style="position: absolute; width: 100%; height: 100%;">
+        <div style="position: absolute; width: 150px; height: 2px; background: linear-gradient(90deg, transparent, #ff4655, transparent); top: 30%; left: 10%; transform: rotate(-15deg); animation: pulse 2s ease-in-out infinite;"></div>
+        <div style="position: absolute; width: 120px; height: 2px; background: linear-gradient(90deg, transparent, #bd3944, transparent); top: 60%; right: 20%; transform: rotate(20deg); animation: pulse 2.5s ease-in-out infinite 0.5s;"></div>
+        <div style="position: absolute; width: 100px; height: 2px; background: linear-gradient(90deg, transparent, #ff4655, transparent); bottom: 25%; left: 30%; transform: rotate(-8deg); animation: pulse 3s ease-in-out infinite 1s;"></div>
+      </div>
+      <!-- 角落装饰 -->
+      <div style="position: absolute; top: 15px; left: 15px; width: 30px; height: 30px; border-left: 2px solid #ff4655; border-top: 2px solid #ff4655;"></div>
+      <div style="position: absolute; bottom: 15px; right: 15px; width: 30px; height: 30px; border-right: 2px solid #bd3944; border-bottom: 2px solid #bd3944;"></div>
+      <div style="position: absolute; bottom: 10px; left: 10px; right: 10px; text-align: center; color: #ff4655; font-weight: bold; text-shadow: 0 0 10px #ff4655;">🎯 几何线条 + 角落装饰</div>
+    </div>
+    <div class="card-body">
+      <h3>Valorant</h3>
+      <p>红色斜线 + 角落框线 + 脉冲动画</p>
+      <div style="margin-top: 8px; font-size: 12px; color: #888;">
+        主色: #ff4655 | 辅色: #bd3944
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  @keyframes float {
+    0%, 100% { transform: translateY(0) scale(1); opacity: 0.8; }
+    50% { transform: translateY(-20px) scale(1.2); opacity: 1; }
+  }
+  @keyframes gridMove {
+    0% { background-position: 0 0; }
+    100% { background-position: 30px 30px; }
+  }
+  @keyframes scanline {
+    0% { top: -2px; }
+    100% { top: 100%; }
+  }
+  @keyframes dataFlow {
+    0% { transform: translateY(0); opacity: 0; }
+    20% { opacity: 0.6; }
+    80% { opacity: 0.6; }
+    100% { transform: translateY(-50px); opacity: 0; }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; transform: scaleX(1); }
+    50% { opacity: 1; transform: scaleX(1.1); }
+  }
+</style>
+
+<div class="section" style="margin-top: 2rem;">
+  <h3>📐 背景动画设计思路</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+    <div style="padding: 1rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border);">
+      <h4 style="color: var(--primary); margin-bottom: 0.5rem;">🏠 首页 (HomeView)</h4>
+      <ul style="font-size: 13px; color: var(--text-muted); margin: 0; padding-left: 1.2rem;">
+        <li>osu!: 粒子连线 + 鼠标引力</li>
+        <li>赛博朋克: 网格扫描 + 数据流</li>
+        <li>Valorant: 几何线条 + 角落装饰</li>
+      </ul>
+    </div>
+    <div style="padding: 1rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border);">
+      <h4 style="color: var(--primary); margin-bottom: 0.5rem;">📄 其他页面</h4>
+      <ul style="font-size: 13px; color: var(--text-muted); margin: 0; padding-left: 1.2rem;">
+        <li>使用相同的主题背景</li>
+        <li>降低动画强度 (不抢内容)</li>
+        <li>统一视觉体验</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 1.5rem; padding: 1rem; background: rgba(0, 255, 136, 0.1); border-radius: 8px; border: 1px solid rgba(0, 255, 136, 0.3);">
+  <p style="margin: 0; font-size: 14px;">
+    <strong style="color: #00ff88;">💡 设计原则:</strong>
+    <span style="color: var(--text-muted);">每个主题的背景动画都独特且不重复，但都保持赛博朋克/霓虹风格的一致性。背景使用 CSS 动画 + Canvas 实现，性能开销小。</span>
+  </p>
+</div>
