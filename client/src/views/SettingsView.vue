@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import AvatarPicker from '../components/settings/AvatarPicker.vue'
 import PasswordForm from '../components/settings/PasswordForm.vue'
+import SoundSettings from '../components/settings/SoundSettings.vue'
+import CursorSettings from '../components/settings/CursorSettings.vue'
 import ThemePicker from '../components/settings/ThemePicker.vue'
 import ThemeBackground from '@/components/common/ThemeBackground.vue'
 
@@ -85,6 +87,18 @@ function goBack() {
           {{ saving ? '保存中...' : '💾 保存' }}
         </button>
       </div>
+    </div>
+
+    <!-- 音效设置卡片 -->
+    <div class="settings-card">
+      <h2 class="card-title">🔊 音效设置</h2>
+      <SoundSettings />
+    </div>
+
+    <!-- 光标样式卡片 -->
+    <div class="settings-card">
+      <h2 class="card-title">🎯 光标样式</h2>
+      <CursorSettings />
     </div>
 
     <!-- 修改密码卡片 -->
