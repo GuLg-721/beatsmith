@@ -10,32 +10,11 @@ const authStore = useAuthStore()
 
 const profileUser = ref<any>(null)
 const loading = ref(true)
-
-// 模拟最近游玩记录
-const recentPlays = ref([
-  { id: 1, title: 'Faded', artist: 'Alan Walker', grade: 'S', score: 985000, accuracy: 96.5, date: '2026-06-04' },
-  { id: 2, title: 'Counting Stars', artist: 'OneRepublic', grade: 'A', score: 872000, accuracy: 89.2, date: '2026-06-03' },
-  { id: 3, title: 'Sugar', artist: 'Maroon 5', grade: 'SS', score: 998000, accuracy: 99.1, date: '2026-06-02' },
-  { id: 4, title: 'Shape of You', artist: 'Ed Sheeran', grade: 'B', score: 756000, accuracy: 82.3, date: '2026-06-01' },
-  { id: 5, title: 'Bad Guy', artist: 'Billie Eilish', grade: 'S', score: 976000, accuracy: 95.8, date: '2026-05-31' }
-])
+const recentPlays = ref<any[]>([])
 
 const isOwnProfile = computed(() => {
   return authStore.user?.id === Number(route.params.id)
 })
-
-function getGradeColor(grade: string) {
-  const colors: Record<string, string> = {
-    'SSS': '#ff66aa',
-    'SS': '#bf00ff',
-    'S': '#00d4ff',
-    'A': '#00ff88',
-    'B': '#fcee09',
-    'C': '#ff6600',
-    'D': '#ff4466'
-  }
-  return colors[grade] || '#888888'
-}
 
 onMounted(async () => {
   if (authStore.isLoggedIn) {
@@ -120,9 +99,7 @@ function goBack() {
               <div class="recent-artist">{{ play.artist }}</div>
             </div>
             <div class="recent-stats">
-              <span class="grade-badge" :style="{ color: getGradeColor(play.grade), borderColor: getGradeColor(play.grade) }">
-                {{ play.grade }}
-              </span>
+              <span class="grade-badge">{{ play.grade }}</span>
               <div class="score">{{ play.score.toLocaleString() }}</div>
               <div class="accuracy">{{ play.accuracy }}%</div>
             </div>
