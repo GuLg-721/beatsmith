@@ -653,12 +653,19 @@ function goBack() {
 
 .stats-summary {
   display: flex;
-  justify-content: space-around;
-  margin-bottom: 1.5rem;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
 }
 
 .stat-item {
   text-align: center;
+  padding: 0.5rem 1rem;
+  flex: 1;
 }
 
 .stat-item .stat-label {
