@@ -13,8 +13,8 @@ const cursorStyles = [
   },
   {
     id: 'square',
-    name: '方框准星',
-    svg: `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="6" width="20" height="20" fill="none" stroke="white" stroke-width="2"/></svg>`
+    name: '圆圈准星',
+    svg: `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="8" fill="none" stroke="white" stroke-width="2"/></svg>`
   },
   {
     id: 'dot',

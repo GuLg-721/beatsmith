@@ -501,7 +501,7 @@ function applyCursor() {
   } else if (cursor === 'cross') {
     canvas.style.cursor = `url("data:image/svg+xml,%3Csvg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cline x1='16' y1='4' x2='16' y2='28' stroke='white' stroke-width='2'/%3E%3Cline x1='4' y1='16' x2='28' y2='16' stroke='white' stroke-width='2'/%3E%3C/svg%3E") 16 16, auto`
   } else if (cursor === 'square') {
-    canvas.style.cursor = `url("data:image/svg+xml,%3Csvg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='6' y='6' width='20' height='20' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E") 16 16, auto`
+    canvas.style.cursor = `url("data:image/svg+xml,%3Csvg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='16' cy='16' r='8' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E") 16 16, auto`
   } else if (cursor === 'dot') {
     canvas.style.cursor = `url("data:image/svg+xml,%3Csvg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='13' y='13' width='6' height='6' fill='white'/%3E%3Crect x='14' y='14' width='4' height='4' fill='%23fcee09'/%3E%3C/svg%3E") 4 4, auto`
   }
