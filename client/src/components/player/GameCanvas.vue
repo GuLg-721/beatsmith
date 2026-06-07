@@ -311,11 +311,23 @@ function drawJTs(ctx: CanvasRenderingContext2D) {
   })
 }
 
+let lastRenderTime = 0
+const FRAME_INTERVAL = 1000 / 60 // 60 FPS
+
+function throttledRender() {
+  const now = performance.now()
+  if (now - lastRenderTime >= FRAME_INTERVAL) {
+    lastRenderTime = now
+    render()
+  }
+  animFrameId = requestAnimationFrame(throttledRender)
+}
+
 function render() {
   const canvas = canvasRef.value
-  if (!canvas) { animFrameId = requestAnimationFrame(render); return }
+  if (!canvas) return
   const ctx = canvas.getContext('2d')
-  if (!ctx) { animFrameId = requestAnimationFrame(render); return }
+  if (!ctx) return
 
   // 先更新 Hold 进度（在同一帧内）
 
@@ -362,7 +374,6 @@ function render() {
     if (ct >= audioStore.duration && audioStore.duration > 0) gameStore.endGame()
   }
 
-  animFrameId = requestAnimationFrame(render)
 }
 
 function handleClick(e: MouseEvent) {
@@ -482,7 +493,7 @@ onMounted(() => {
   if (gameStore.currentMapId) {
     import('@/utils/api').then(({ default: api }) => {
       api.get(`/api/maps/${gameStore.currentMapId}`).then(res => {
-  render() // 启动渲染循环
+  throttledRender() // 启动渲染循环
         if (res.data.map?.coverImage) loadCover(`/uploads/${res.data.map.coverImage}`)
       })
     })
