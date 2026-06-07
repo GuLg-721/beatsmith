@@ -11,6 +11,7 @@
   "dependencies": {
     "@lucide/vue": "^1.17.0",
     "axios": "^1.17.0",
+    "jsmediatags": "^3.9.7",
     "motion-v": "^2.2.1",
     "naive-ui": "^2.44.1",
     "pinia": "^3.0.4",

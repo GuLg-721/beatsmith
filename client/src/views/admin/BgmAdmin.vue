@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import api from '@/utils/api'
+import jsmediatags from 'jsmediatags'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -119,6 +120,30 @@ function triggerUpload() {
   fileInput.value?.click()
 }
 
+// 读取 MP3 元数据
+async function readMp3Metadata(file: File): Promise<{ artist: string; title: string } | null> {
+  return new Promise((resolve) => {
+    jsmediatags.read(file, {
+      onSuccess: (tag) => {
+        const artist = tag.tags.artist || ''
+        const title = tag.tags.title || ''
+
+        if (artist || title) {
+          resolve({
+            artist: artist || '未知艺术家',
+            title: title || file.name.replace(/\.[^/.]+$/, '')
+          })
+        } else {
+          resolve(null)
+        }
+      },
+      onError: () => {
+        resolve(null)
+      }
+    })
+  })
+}
+
 // 解析文件名：格式为 "作者名 - 歌曲名.mp3"
 function parseFileName(fileName: string): { artist: string; title: string } {
   // 移除扩展名
@@ -142,6 +167,19 @@ function parseFileName(fileName: string): { artist: string; title: string } {
   }
 }
 
+// 获取歌曲信息（优先读取元数据，其次解析文件名）
+async function getSongInfo(file: File): Promise<{ artist: string; title: string }> {
+  // 首先尝试读取 MP3 元数据
+  const metadata = await readMp3Metadata(file)
+
+  if (metadata) {
+    return metadata
+  }
+
+  // 如果元数据读取失败，解析文件名
+  return parseFileName(file.name)
+}
+
 async function handleUpload(event: Event) {
   const input = event.target as HTMLInputElement
   const files = input.files
@@ -158,8 +196,8 @@ async function handleUpload(event: Event) {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
-      // 解析文件名获取作者和歌曲名
-      const { artist, title } = parseFileName(file.name)
+      // 获取歌曲信息（优先读取元数据，其次解析文件名）
+      const { artist, title } = await getSongInfo(file)
 
       await api.post('/api/bgm/songs', {
         title: title,
