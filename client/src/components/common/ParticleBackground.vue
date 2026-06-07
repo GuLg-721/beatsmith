@@ -6,6 +6,7 @@ let animationId: number | null = null
 let particles: Particle[] = []
 let mouseX = 0
 let mouseY = 0
+let backgroundCanvas: HTMLCanvasElement | null = null
 
 interface Particle {
   x: number
@@ -15,6 +16,22 @@ interface Particle {
   radius: number
   opacity: number
   hue: number
+}
+
+function createBackgroundCanvas(width: number, height: number): HTMLCanvasElement {
+  const bgCanvas = document.createElement('canvas')
+  bgCanvas.width = width
+  bgCanvas.height = height
+  const bgCtx = bgCanvas.getContext('2d')
+  if (bgCtx) {
+    const gradient = bgCtx.createLinearGradient(0, 0, width, height)
+    gradient.addColorStop(0, '#070707')
+    gradient.addColorStop(0.5, '#0a0a0a')
+    gradient.addColorStop(1, '#070707')
+    bgCtx.fillStyle = gradient
+    bgCtx.fillRect(0, 0, width, height)
+  }
+  return bgCanvas
 }
 
 function initCanvas() {
@@ -28,6 +45,7 @@ function initCanvas() {
   function resize() {
     canvas!.width = window.innerWidth
     canvas!.height = window.innerHeight
+    backgroundCanvas = createBackgroundCanvas(canvas!.width, canvas!.height)
   }
   resize()
   window.addEventListener('resize', resize)
@@ -45,16 +63,22 @@ function initCanvas() {
 
   // 动画循环
   function animate() {
-    ctx!.fillStyle = 'rgba(7, 7, 7, 0.15)'
-    ctx!.fillRect(0, 0, canvas!.width, canvas!.height)
+    // 清除画布并绘制静态背景
+    ctx!.clearRect(0, 0, canvas!.width, canvas!.height)
+    if (backgroundCanvas) {
+      ctx!.drawImage(backgroundCanvas, 0, 0)
+    }
 
     // 更新和绘制粒子
-    particles.forEach((p, i) => {
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i]
+
       // 鼠标引力
       const dx = mouseX - p.x
       const dy = mouseY - p.y
-      const dist = Math.sqrt(dx * dx + dy * dy)
-      if (dist < 200) {
+      const distSq = dx * dx + dy * dy
+      if (distSq < 40000) {
+        const dist = Math.sqrt(distSq)
         const force = (200 - dist) / 200 * 0.02
         p.vx += dx * force * 0.01
         p.vy += dy * force * 0.01
@@ -83,19 +107,20 @@ function initCanvas() {
         const p2 = particles[j]
         const dx2 = p.x - p2.x
         const dy2 = p.y - p2.y
-        const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2)
+        const dist2Sq = dx2 * dx2 + dy2 * dy2
 
-        if (dist2 < 150) {
-          ctx!.beginPath()
-          ctx!.moveTo(p.x, p.y)
-          ctx!.lineTo(p2.x, p2.y)
+        if (dist2Sq < 22500) {
+          const dist2 = Math.sqrt(dist2Sq)
           const alpha = (1 - dist2 / 150) * 0.15
           ctx!.strokeStyle = `hsla(${(p.hue + p2.hue) / 2}, 70%, 55%, ${alpha})`
           ctx!.lineWidth = 0.5
+          ctx!.beginPath()
+          ctx!.moveTo(p.x, p.y)
+          ctx!.lineTo(p2.x, p2.y)
           ctx!.stroke()
         }
       }
-    })
+    }
 
     animationId = requestAnimationFrame(animate)
   }
