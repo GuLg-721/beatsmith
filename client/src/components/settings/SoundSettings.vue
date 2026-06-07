@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useAuthStore } from '../../stores/authStore'
-import api from '@/utils/api'
+import { useAuthStore } from '@/stores/authStore'
+import { useSkinSettings } from '@/composables/useSkinSettings'
 
 const authStore = useAuthStore()
+const { soundScheme, customSounds, loadSkinSettings, saveSkinSettings } = useSkinSettings()
 
 const soundSchemes = [
   { id: 'default', name: '默认', description: '轻敲声 + 打击声 + 叮咚声' },
@@ -11,45 +12,15 @@ const soundSchemes = [
   { id: 'mechanical', name: '机械', description: '机械键 + 金属撞击 + 齿轮声' }
 ]
 
-const currentScheme = ref('default')
-const customSounds = ref<{ click: string | null; hit: string | null; grade: string | null }>({
-  click: null,
-  hit: null,
-  grade: null
-})
-const currentCursor = ref('cross')
-const customCursor = ref<string | null>(null)
 const uploading = ref(false)
 const fileInput = ref<HTMLInputElement>()
 
-onMounted(async () => {
-  try {
-    const res = await api.get(`/api/users/${authStore.user?.id}/skin`)
-    currentScheme.value = res.data.soundScheme || 'default'
-    customSounds.value = res.data.customSounds || { click: null, hit: null, grade: null }
-    currentCursor.value = res.data.cursor || 'cross'
-    customCursor.value = res.data.customCursor || null
-  } catch (err) {
-    console.error('Failed to load skin settings:', err)
-  }
+onMounted(() => {
+  loadSkinSettings()
 })
 
 function selectScheme(schemeId: string) {
-  currentScheme.value = schemeId
-  saveSettings()
-}
-
-async function saveSettings() {
-  try {
-    await api.put(`/api/users/${authStore.user?.id}/skin`, {
-      soundScheme: currentScheme.value,
-      customSounds: customSounds.value,
-      cursor: currentCursor.value,
-      customCursor: customCursor.value
-    })
-  } catch (err) {
-    console.error('Failed to save skin settings:', err)
-  }
+  saveSkinSettings({ soundScheme: schemeId })
 }
 
 function triggerUpload() {
@@ -71,12 +42,23 @@ async function handleUpload(event: Event) {
     const formData = new FormData()
     formData.append('sound', file)
 
-    const res = await api.post('/api/upload/sound', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+    const res = await fetch('/api/upload/sound', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      },
+      body: formData
     })
 
-    customSounds.value.click = res.data.url
-    saveSettings()
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.message)
+    }
+
+    const data = await res.json()
+    saveSkinSettings({
+      customSounds: { ...customSounds.value, click: data.url }
+    })
   } catch (err) {
     alert(err instanceof Error ? err.message : '上传失败')
   } finally {
@@ -86,7 +68,7 @@ async function handleUpload(event: Event) {
 }
 
 function playCustomSound() {
-  if (!customSounds.value.click) return
+  if (!customSounds.value?.click) return
   const audio = new Audio(customSounds.value.click)
   audio.play()
 }
@@ -94,7 +76,6 @@ function playCustomSound() {
 function playPreview() {
   const ctx = new AudioContext()
 
-  // 根据当前方案设置音效参数
   const schemes: Record<string, { click: { freq: number; type: OscillatorType }; hit: { freq: number; type: OscillatorType }; grade: { freq: number; type: OscillatorType } }> = {
     default: {
       click: { freq: 800, type: 'sine' },
@@ -113,9 +94,8 @@ function playPreview() {
     }
   }
 
-  const config = schemes[currentScheme.value] || schemes.default
+  const config = schemes[soundScheme.value] || schemes.default
 
-  // Play click sound
   const osc1 = ctx.createOscillator()
   const gain1 = ctx.createGain()
   osc1.connect(gain1)
@@ -127,7 +107,6 @@ function playPreview() {
   gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1)
   osc1.stop(ctx.currentTime + 0.1)
 
-  // Play hit sound
   const osc2 = ctx.createOscillator()
   const gain2 = ctx.createGain()
   osc2.connect(gain2)
@@ -139,7 +118,6 @@ function playPreview() {
   gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25)
   osc2.stop(ctx.currentTime + 0.25)
 
-  // Play grade sound
   const osc3 = ctx.createOscillator()
   const gain3 = ctx.createGain()
   osc3.connect(gain3)
@@ -160,7 +138,7 @@ function playPreview() {
         v-for="scheme in soundSchemes"
         :key="scheme.id"
         class="scheme-card"
-        :class="{ active: currentScheme === scheme.id }"
+        :class="{ active: soundScheme === scheme.id }"
         @click="selectScheme(scheme.id)"
       >
         <div class="scheme-name">{{ scheme.name }}</div>
@@ -181,7 +159,7 @@ function playPreview() {
       <p class="upload-hint">支持 MP3、WAV、OGG 格式，最大 1MB，时长建议 0.5 秒内</p>
     </div>
 
-    <div v-if="customSounds.click" class="uploaded-sound">
+    <div v-if="customSounds?.click" class="uploaded-sound">
       <div class="uploaded-info">
         <span class="uploaded-icon">🎵</span>
         <span class="uploaded-name">自定义点击音效</span>

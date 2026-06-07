@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useAuthStore } from '../../stores/authStore'
-import api from '@/utils/api'
+import { useAuthStore } from '@/stores/authStore'
+import { useSkinSettings } from '@/composables/useSkinSettings'
 
 const authStore = useAuthStore()
+const { cursor, customCursor, loadSkinSettings, saveSkinSettings } = useSkinSettings()
 
 const cursorStyles = [
   {
@@ -23,25 +24,15 @@ const cursorStyles = [
   }
 ]
 
-const currentCursor = ref('cross')
-const customCursor = ref<string | null>(null)
 const uploading = ref(false)
 const fileInput = ref<HTMLInputElement>()
 
-onMounted(async () => {
-  try {
-    const res = await api.get(`/api/users/${authStore.user?.id}/skin`)
-    currentCursor.value = res.data.cursor || 'cross'
-    customCursor.value = res.data.customCursor || null
-  } catch (err) {
-    console.error('Failed to load skin settings:', err)
-  }
+onMounted(() => {
+  loadSkinSettings()
 })
 
 function selectCursor(cursorId: string) {
-  currentCursor.value = cursorId
-  customCursor.value = null
-  saveSettings()
+  saveSkinSettings({ cursor: cursorId, customCursor: null })
 }
 
 function triggerUpload() {
@@ -63,31 +54,26 @@ async function handleUpload(event: Event) {
     const formData = new FormData()
     formData.append('cursor', file)
 
-    const res = await api.post('/api/upload/cursor', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+    const res = await fetch('/api/upload/cursor', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      },
+      body: formData
     })
 
-    customCursor.value = res.data.url
-    currentCursor.value = 'custom'
-    saveSettings()
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.message)
+    }
+
+    const data = await res.json()
+    saveSkinSettings({ cursor: 'custom', customCursor: data.url })
   } catch (err) {
     alert(err instanceof Error ? err.message : '上传失败')
   } finally {
     uploading.value = false
     input.value = ''
-  }
-}
-
-async function saveSettings() {
-  try {
-    await api.put(`/api/users/${authStore.user?.id}/skin`, {
-      soundScheme: authStore.user?.skinSettings?.soundScheme || 'default',
-      customSounds: authStore.user?.skinSettings?.customSounds || { click: null, hit: null, grade: null },
-      cursor: currentCursor.value,
-      customCursor: customCursor.value
-    })
-  } catch (err) {
-    console.error('Failed to save skin settings:', err)
   }
 }
 </script>
@@ -96,14 +82,14 @@ async function saveSettings() {
   <div class="cursor-settings">
     <div class="cursor-grid">
       <button
-        v-for="cursor in cursorStyles"
-        :key="cursor.id"
+        v-for="cursorStyle in cursorStyles"
+        :key="cursorStyle.id"
         class="cursor-card"
-        :class="{ active: currentCursor === cursor.id }"
-        @click="selectCursor(cursor.id)"
+        :class="{ active: cursor === cursorStyle.id }"
+        @click="selectCursor(cursorStyle.id)"
       >
-        <div class="cursor-preview" v-html="cursor.svg"></div>
-        <div class="cursor-name">{{ cursor.name }}</div>
+        <div class="cursor-preview" v-html="cursorStyle.svg"></div>
+        <div class="cursor-name">{{ cursorStyle.name }}</div>
       </button>
     </div>
 
