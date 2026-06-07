@@ -53,6 +53,11 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/share/:mapId',
+      name: 'Share',
+      component: () => import('@/views/ShareView.vue')
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'NotFound',
       component: () => import('@/views/NotFoundView.vue')
