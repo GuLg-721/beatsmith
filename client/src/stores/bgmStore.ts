@@ -1,0 +1,111 @@
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import api from '@/utils/api'
+
+export const useBgmStore = defineStore('bgm', () => {
+  const playlist = ref<any[]>([])
+  const currentIndex = ref(0)
+  const isPlaying = ref(false)
+  const volume = ref(0.3)
+  const audio = ref<HTMLAudioElement | null>(null)
+  const currentTime = ref(0)
+  const duration = ref(0)
+
+  const currentSong = computed(() => playlist.value[currentIndex.value] || null)
+
+  async function loadPlaylist() {
+    try {
+      const res = await api.get('/api/bgm/playlist')
+      playlist.value = res.data.songs
+    } catch (err) {
+      console.error('Failed to load playlist:', err)
+    }
+  }
+
+  function play() {
+    if (!currentSong.value) return
+
+    if (!audio.value) {
+      audio.value = new Audio(`/uploads/${currentSong.value.filePath}`)
+      audio.value.addEventListener('timeupdate', () => {
+        currentTime.value = audio.value?.currentTime || 0
+      })
+      audio.value.addEventListener('loadedmetadata', () => {
+        duration.value = audio.value?.duration || 0
+      })
+      audio.value.addEventListener('ended', () => {
+        next()
+      })
+    }
+
+    audio.value.volume = volume.value
+    audio.value.play()
+    isPlaying.value = true
+  }
+
+  function pause() {
+    audio.value?.pause()
+    isPlaying.value = false
+  }
+
+  function togglePlay() {
+    if (isPlaying.value) {
+      pause()
+    } else {
+      play()
+    }
+  }
+
+  function next() {
+    if (playlist.value.length === 0) return
+    currentIndex.value = (currentIndex.value + 1) % playlist.value.length
+    stop()
+    play()
+  }
+
+  function prev() {
+    if (playlist.value.length === 0) return
+    currentIndex.value = (currentIndex.value - 1 + playlist.value.length) % playlist.value.length
+    stop()
+    play()
+  }
+
+  function stop() {
+    audio.value?.pause()
+    audio.value = null
+    isPlaying.value = false
+    currentTime.value = 0
+    duration.value = 0
+  }
+
+  function setVolume(value: number) {
+    volume.value = value
+    if (audio.value) {
+      audio.value.volume = value
+    }
+  }
+
+  const progress = computed(() => {
+    if (duration.value === 0) return 0
+    return currentTime.value / duration.value
+  })
+
+  return {
+    playlist,
+    currentIndex,
+    isPlaying,
+    volume,
+    currentTime,
+    duration,
+    currentSong,
+    progress,
+    loadPlaylist,
+    play,
+    pause,
+    togglePlay,
+    next,
+    prev,
+    stop,
+    setVolume
+  }
+})
