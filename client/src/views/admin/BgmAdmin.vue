@@ -9,6 +9,7 @@ const authStore = useAuthStore()
 
 const playlists = ref<any[]>([])
 const currentPlaylistId = ref<number | null>(null)
+const activePlaylistId = ref<number | null>(null)
 const playlistSongs = ref<any[]>([])
 const loading = ref(false)
 const uploading = ref(false)
@@ -29,16 +30,23 @@ async function loadPlaylists() {
   try {
     const res = await api.get('/api/bgm/playlists')
     playlists.value = res.data.playlists
+    // 找到活跃歌单
     const active = playlists.value.find((p: any) => p.isActive)
-    if (active) {
-      currentPlaylistId.value = active.id
-      loadPlaylistSongs(active.id)
+    activePlaylistId.value = active?.id || null
+    // 默认选中第一个歌单
+    if (playlists.value.length > 0 && !currentPlaylistId.value) {
+      selectPlaylist(playlists.value[0].id)
     }
   } catch (err) {
     console.error('Failed to load playlists:', err)
   } finally {
     loading.value = false
   }
+}
+
+async function selectPlaylist(playlistId: number) {
+  currentPlaylistId.value = playlistId
+  await loadPlaylistSongs(playlistId)
 }
 
 async function loadPlaylistSongs(playlistId: number) {
@@ -50,6 +58,15 @@ async function loadPlaylistSongs(playlistId: number) {
     console.error('Failed to load playlist songs:', err)
   } finally {
     loading.value = false
+  }
+}
+
+async function setActivePlaylist(playlistId: number) {
+  try {
+    await api.put(`/api/bgm/playlists/${playlistId}/active`)
+    activePlaylistId.value = playlistId
+  } catch (err) {
+    console.error('Failed to set active playlist:', err)
   }
 }
 
@@ -68,23 +85,17 @@ async function createPlaylist() {
   }
 }
 
-async function setActivePlaylist(playlistId: number) {
-  try {
-    await api.put(`/api/bgm/playlists/${playlistId}/active`)
-    currentPlaylistId.value = playlistId
-    loadPlaylistSongs(playlistId)
-  } catch (err) {
-    console.error('Failed to set active playlist:', err)
-  }
-}
-
 async function deletePlaylist(playlistId: number) {
   if (!confirm('确定删除这个歌单吗？歌单中的所有歌曲都会被删除。')) return
   try {
     await api.delete(`/api/bgm/playlists/${playlistId}`)
+    // 如果删除的是当前查看的歌单，切换到第一个
     if (currentPlaylistId.value === playlistId) {
       currentPlaylistId.value = null
       playlistSongs.value = []
+    }
+    if (activePlaylistId.value === playlistId) {
+      activePlaylistId.value = null
     }
     loadPlaylists()
   } catch (err) {
@@ -163,15 +174,20 @@ function formatDuration(seconds: number): string {
           v-for="pl in playlists"
           :key="pl.id"
           class="playlist-item"
-          :class="{ active: currentPlaylistId === pl.id }"
+          :class="{
+            viewing: currentPlaylistId === pl.id,
+            active: activePlaylistId === pl.id
+          }"
+          @click="selectPlaylist(pl.id)"
         >
           <div class="playlist-info">
             <span class="playlist-name">{{ pl.name }}</span>
-            <span v-if="pl.isActive" class="active-badge">播放中</span>
+            <span v-if="activePlaylistId === pl.id" class="active-badge">播放中</span>
+            <span v-else-if="currentPlaylistId === pl.id" class="viewing-badge">查看中</span>
           </div>
-          <div class="playlist-actions">
-            <button v-if="!pl.isActive" @click="setActivePlaylist(pl.id)">设为播放</button>
-            <button v-if="!pl.isActive" class="delete-btn" @click="deletePlaylist(pl.id)">🗑️</button>
+          <div class="playlist-actions" @click.stop>
+            <button v-if="activePlaylistId !== pl.id" @click="setActivePlaylist(pl.id)">设为播放</button>
+            <button class="delete-btn" @click="deletePlaylist(pl.id)">🗑️</button>
           </div>
         </div>
       </div>
@@ -187,7 +203,7 @@ function formatDuration(seconds: number): string {
 
     <!-- 上传歌曲 -->
     <div class="section" v-if="currentPlaylistId">
-      <h2>上传歌曲</h2>
+      <h2>上传歌曲到: {{ playlists.find(p => p.id === currentPlaylistId)?.name }}</h2>
       <button class="upload-btn" @click="triggerUpload" :disabled="uploading">
         {{ uploading ? '上传中...' : '📤 上传歌曲' }}
       </button>
@@ -201,9 +217,9 @@ function formatDuration(seconds: number): string {
       />
     </div>
 
-    <!-- 当前歌单歌曲 -->
+    <!-- 当前查看的歌单歌曲 -->
     <div class="section" v-if="currentPlaylistId">
-      <h2>当前歌单歌曲 ({{ playlistSongs.length }} 首)</h2>
+      <h2>歌曲列表 ({{ playlistSongs.length }} 首)</h2>
       <div v-if="loading" class="loading">加载中...</div>
       <div v-else-if="playlistSongs.length > 0" class="song-list">
         <div v-for="song in playlistSongs" :key="song.id" class="song-item">
@@ -269,9 +285,14 @@ h2 {
   border-color: var(--primary);
 }
 
-.playlist-item.active {
+.playlist-item.viewing {
   border-color: var(--primary);
-  background: rgba(var(--primary-rgb), 0.1);
+  background: rgba(var(--primary-rgb), 0.05);
+}
+
+.playlist-item.active {
+  border-color: var(--success);
+  background: rgba(0, 255, 136, 0.05);
 }
 
 .playlist-info {
@@ -286,8 +307,17 @@ h2 {
 }
 
 .active-badge {
-  font-size: 0.75rem;
-  padding: 0.2rem 0.5rem;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  background: var(--success);
+  color: #000;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.viewing-badge {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
   background: var(--primary);
   color: #000;
   border-radius: 4px;
