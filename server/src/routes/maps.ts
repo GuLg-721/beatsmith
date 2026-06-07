@@ -292,7 +292,13 @@ router.delete('/:id', authMiddleware, (req: AuthRequest, res: Response) => {
       return
     }
 
-    if (existing[0].values[0][0] !== req.user!.userId) {
+    const isCreator = existing[0].values[0][0] === req.user!.userId
+
+    // 检查是否是管理员
+    const userResult = db.exec('SELECT username FROM users WHERE id = ?', [req.user!.userId])
+    const isAdmin = userResult.length > 0 && userResult[0].values[0][0] === 'admin'
+
+    if (!isCreator && !isAdmin) {
       res.status(403).json({ message: '无权删除此谱面' })
       return
     }
