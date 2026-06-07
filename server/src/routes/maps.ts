@@ -85,6 +85,69 @@ router.get('/', (req: Request, res: Response) => {
   }
 })
 
+// GET /api/maps/:id/public — 获取公开谱面信息（无需认证）
+router.get('/:id/public', (req: Request, res: Response) => {
+  try {
+    const db = getDB()
+    const mapId = req.params.id
+
+    // 获取谱面信息
+    const mapResult = db.exec(
+      `SELECT m.id, m.title, m.artist, m.audio_file, m.cover_image,
+              m.duration, m.bpm, m.difficulty, m.play_count,
+              u.username as creator_name
+       FROM beatmaps m
+       LEFT JOIN users u ON m.creator_id = u.id
+       WHERE m.id = ?`,
+      [mapId]
+    )
+
+    if (mapResult.length === 0 || mapResult[0].values.length === 0) {
+      res.status(404).json({ message: '谱面不存在' })
+      return
+    }
+
+    const row = mapResult[0].values[0]
+    const map = {
+      id: row[0],
+      title: row[1],
+      artist: row[2],
+      audioFile: row[3],
+      coverImage: row[4],
+      duration: row[5],
+      bpm: row[6],
+      difficulty: row[7],
+      playCount: row[8],
+      creatorName: row[9]
+    }
+
+    // 获取排行榜前10名
+    const scoresResult = db.exec(
+      `SELECT s.user_id, u.username, s.score, s.accuracy, s.grade
+       FROM scores s
+       LEFT JOIN users u ON s.user_id = u.id
+       WHERE s.beatmap_id = ?
+       ORDER BY s.score DESC
+       LIMIT 10`,
+      [mapId]
+    )
+
+    const scores = scoresResult.length > 0 ? scoresResult[0].values.map((row, index) => ({
+      rank: index + 1,
+      userId: row[0],
+      username: row[1],
+      score: row[2],
+      accuracy: row[3],
+      grade: row[4]
+    })) : []
+
+    res.status(200).json({ map, scores })
+  } catch (err) {
+    console.error('Get public map error:', err)
+    res.status(500).json({ message: '获取谱面信息失败' })
+  }
+})
+
 // GET /api/maps/:id — 获取谱面详情
 router.get('/:id', (req: Request, res: Response) => {
   try {
