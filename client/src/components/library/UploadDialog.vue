@@ -9,6 +9,7 @@ import {
   NAlert,
 } from 'naive-ui'
 import api from '@/utils/api'
+import jsmediatags from 'jsmediatags'
 
 const props = defineProps<{
   show: boolean
@@ -33,10 +34,65 @@ const coverFile = ref<File | null>(null)
 const audioInputRef = ref<HTMLInputElement | null>(null)
 const coverInputRef = ref<HTMLInputElement | null>(null)
 
-function handleAudioChange(e: Event) {
+// 读取 MP3 元数据
+async function readMp3Metadata(file: File): Promise<{ artist: string; title: string } | null> {
+  return new Promise((resolve) => {
+    jsmediatags.read(file, {
+      onSuccess: (tag) => {
+        const artist = tag.tags.artist || ''
+        const title = tag.tags.title || ''
+
+        if (artist || title) {
+          resolve({
+            artist: artist || '未知艺术家',
+            title: title || file.name.replace(/\.[^/.]+$/, '')
+          })
+        } else {
+          resolve(null)
+        }
+      },
+      onError: () => {
+        resolve(null)
+      }
+    })
+  })
+}
+
+// 解析文件名：格式为 "作者名 - 歌曲名.mp3"
+function parseFileName(fileName: string): { artist: string; title: string } {
+  const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '')
+  const parts = nameWithoutExt.split(' - ')
+
+  if (parts.length >= 2) {
+    return {
+      artist: parts[0].trim(),
+      title: parts.slice(1).join(' - ').trim()
+    }
+  }
+
+  return {
+    artist: '未知艺术家',
+    title: nameWithoutExt.trim()
+  }
+}
+
+async function handleAudioChange(e: Event) {
   const input = e.target as HTMLInputElement
   if (input.files && input.files[0]) {
-    audioFile.value = input.files[0]
+    const file = input.files[0]
+    audioFile.value = file
+
+    // 自动识别歌曲信息
+    const metadata = await readMp3Metadata(file)
+    if (metadata) {
+      form.value.title = metadata.title
+      form.value.artist = metadata.artist
+    } else {
+      // 如果元数据读取失败，解析文件名
+      const fileInfo = parseFileName(file.name)
+      form.value.title = fileInfo.title
+      form.value.artist = fileInfo.artist
+    }
   }
 }
 
