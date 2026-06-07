@@ -59,6 +59,22 @@ function editMap() {
   router.push({ name: 'Editor', query: { mapId: mapId.value } })
 }
 
+function shareMap() {
+  const shareUrl = `${window.location.origin}/share/${mapId.value}`
+  navigator.clipboard.writeText(shareUrl).then(() => {
+    alert('链接已复制！')
+  }).catch(() => {
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea')
+    textArea.value = shareUrl
+    document.body.appendChild(textArea)
+    textArea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textArea)
+    alert('链接已复制！')
+  })
+}
+
 // 默认封面渐变
 function getCoverGradient(id: string) {
   let hash = 0
@@ -126,6 +142,7 @@ onMounted(fetchData)
             <NButton v-if="isOwner" size="large" @click="editMap">
               ✏️ 编辑谱面
             </NButton>
+            <NButton class="share-btn" @click="shareMap">📤 分享</NButton>
           </div>
         </div>
       </div>
@@ -271,6 +288,10 @@ onMounted(fetchData)
   gap: 0.75rem;
   margin-top: auto;
   padding-top: 1rem;
+}
+
+.share-btn {
+  margin-left: 0.5rem;
 }
 
 :deep(.n-button--primary-type) {
