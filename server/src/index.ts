@@ -8,6 +8,7 @@ import mapsRoutes from './routes/maps'
 import scoresRoutes from './routes/scores'
 import leaderboardRoutes from './routes/leaderboard'
 import userRoutes from './routes/users'
+import bgmRoutes from './routes/bgm'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -31,6 +32,7 @@ app.use('/api/maps', mapsRoutes)
 app.use('/api/maps', scoresRoutes)
 app.use('/api/leaderboard', leaderboardRoutes)
 app.use('/api/users', userRoutes)
+app.use('/api/bgm', bgmRoutes)
 
 // 启动服务器
 async function start() {
