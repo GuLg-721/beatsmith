@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, watch } from 'vue'
-import { NButton, NSlider } from 'naive-ui'
 import { useBgmStore } from '@/stores/bgmStore'
 
 const bgmStore = useBgmStore()
 
-// 用户交互后启用音频播放
 function handleUserInteraction() {
   if (!bgmStore.isPlaying && bgmStore.currentSong) {
     bgmStore.enableAudio()
@@ -22,7 +20,6 @@ onUnmounted(() => {
   document.removeEventListener('click', handleUserInteraction)
 })
 
-// 歌曲加载完成后自动准备播放
 watch(() => bgmStore.currentSong, (newSong) => {
   if (newSong && !bgmStore.isPlaying) {
     const audioUrl = newSong.filePath.startsWith('/uploads/')
@@ -39,8 +36,9 @@ function formatTime(seconds: number): string {
   return `${min}:${sec.toString().padStart(2, '0')}`
 }
 
-function handleVolumeChange(value: number) {
-  bgmStore.setVolume(value)
+function handleVolumeChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  bgmStore.setVolume(parseFloat(target.value))
 }
 </script>
 
@@ -61,53 +59,30 @@ function handleVolumeChange(value: number) {
 
     <!-- 播放控制 -->
     <div class="controls">
-      <NButton
-        size="small"
-        circle
-        secondary
-        @click="bgmStore.prev"
-        class="control-btn"
-      >
-        <template #icon>
-          <span>⏮</span>
-        </template>
-      </NButton>
+      <button class="control-btn prev-btn" @click="bgmStore.prev">
+        <span>⏮</span>
+      </button>
 
-      <NButton
-        size="medium"
-        circle
-        type="primary"
-        @click="bgmStore.togglePlay"
-        class="play-btn"
-      >
-        <template #icon>
-          <span>{{ bgmStore.isPlaying ? '⏸️' : '▶️' }}</span>
-        </template>
-      </NButton>
+      <button class="control-btn play-btn" @click="bgmStore.togglePlay">
+        <span>{{ bgmStore.isPlaying ? '⏸️' : '▶️' }}</span>
+      </button>
 
-      <NButton
-        size="small"
-        circle
-        secondary
-        @click="bgmStore.next"
-        class="control-btn"
-      >
-        <template #icon>
-          <span>⏭</span>
-        </template>
-      </NButton>
+      <button class="control-btn next-btn" @click="bgmStore.next">
+        <span>⏭</span>
+      </button>
     </div>
 
     <!-- 音量控制 -->
     <div class="volume-control">
       <span class="volume-icon">🔊</span>
-      <NSlider
+      <input
+        type="range"
+        min="0"
+        max="1"
+        step="0.1"
         :value="bgmStore.volume"
-        :max="1"
-        :step="0.1"
-        :tooltip="false"
+        @input="handleVolumeChange"
         class="volume-slider"
-        @update:value="handleVolumeChange"
       />
     </div>
 
@@ -150,7 +125,7 @@ function handleVolumeChange(value: number) {
   width: 40px;
   height: 40px;
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.2), rgba(var(--secondary-rgb, 0, 0, 255), 0.2));
+  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.2), rgba(var(--secondary-rgb), 0.2));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -191,28 +166,41 @@ function handleVolumeChange(value: number) {
   gap: 0.5rem;
 }
 
-:deep(.control-btn) {
-  --n-border: 1px solid var(--border);
-  --n-border-hover: 1px solid var(--primary);
-  --n-border-pressed: 1px solid var(--primary);
-  --n-color: var(--bg-surface);
-  --n-color-hover: rgba(var(--primary-rgb), 0.1);
-  --n-color-pressed: rgba(var(--primary-rgb), 0.2);
-  --n-text-color: var(--text);
-  --n-text-color-hover: var(--primary);
+.control-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg-surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
 }
 
-:deep(.play-btn) {
-  --n-border: 2px solid var(--primary);
-  --n-border-hover: 2px solid var(--primary);
-  --n-border-pressed: 2px solid var(--primary);
-  --n-color: rgba(var(--primary-rgb), 0.15);
-  --n-color-hover: rgba(var(--primary-rgb), 0.25);
-  --n-color-pressed: rgba(var(--primary-rgb), 0.35);
-  --n-text-color: var(--primary);
-  --n-box-shadow-focus: 0 0 0 2px rgba(var(--primary-rgb), 0.3);
+.control-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(var(--primary-rgb), 0.1);
+  transform: scale(1.1);
+  box-shadow: 0 0 12px rgba(var(--primary-rgb), 0.3);
+}
+
+.play-btn {
   width: 44px;
   height: 44px;
+  font-size: 1.1rem;
+  border: 2px solid var(--primary);
+  background: rgba(var(--primary-rgb), 0.15);
+  color: var(--primary);
+}
+
+.play-btn:hover {
+  background: rgba(var(--primary-rgb), 0.25);
+  box-shadow: 0 0 16px rgba(var(--primary-rgb), 0.4);
 }
 
 .volume-control {
@@ -226,13 +214,31 @@ function handleVolumeChange(value: number) {
   font-size: 1rem;
 }
 
-:deep(.volume-slider) {
-  --n-rail-color: var(--bg-surface);
-  --n-rail-color-hover: var(--bg-surface);
-  --n-handle-color: var(--primary);
-  --n-handle-size: 14px;
-  --n-rail-height: 4px;
-  --n-handle-box-shadow: 0 0 8px rgba(var(--primary-rgb), 0.4);
+.volume-slider {
+  width: 80px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--bg-surface);
+  border-radius: 2px;
+  outline: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--primary);
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(var(--primary-rgb), 0.4);
+  transition: all 0.2s;
+}
+
+.volume-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 12px rgba(var(--primary-rgb), 0.6);
 }
 
 .progress-bar {
@@ -246,7 +252,7 @@ function handleVolumeChange(value: number) {
 
 .progress {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary), var(--secondary, var(--primary)));
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
   transition: width 0.1s;
   box-shadow: 0 0 6px rgba(var(--primary-rgb), 0.5);
 }
