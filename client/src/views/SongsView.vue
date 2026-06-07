@@ -6,6 +6,7 @@ import UploadDialog from '@/components/library/UploadDialog.vue'
 import { NInput, NButton, NEmpty, NSpin } from 'naive-ui'
 import api from '@/utils/api'
 import ThemeBackground from '@/components/common/ThemeBackground.vue'
+import BgmPlayer from '@/components/common/BgmPlayer.vue'
 
 const authStore = useAuthStore()
 
@@ -112,6 +113,8 @@ watch(searchQuery, () => {
         <NButton>登录</NButton>
       </router-link>
     </header>
+
+    <BgmPlayer />
 
     <main class="content">
       <!-- 热门歌曲 -->

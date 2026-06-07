@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/api'
 import ThemeBackground from '@/components/common/ThemeBackground.vue'
+import BgmPlayer from '@/components/common/BgmPlayer.vue'
 import TopThree from '@/components/leaderboard/TopThree.vue'
 import RankList from '@/components/leaderboard/RankList.vue'
 import SongSelector from '@/components/leaderboard/SongSelector.vue'
@@ -86,6 +87,8 @@ onMounted(() => {
       <button class="back-btn" @click="goBack">← 返回</button>
       <span class="nav-title">🏆 排行榜</span>
     </nav>
+
+    <BgmPlayer />
 
     <!-- 标签页 -->
     <div class="tabs">

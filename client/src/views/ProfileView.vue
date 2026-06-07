@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import ThemeBackground from '@/components/common/ThemeBackground.vue'
+import BgmPlayer from '@/components/common/BgmPlayer.vue'
 import api from '@/utils/api'
 
 const router = useRouter()
@@ -123,6 +124,8 @@ function goBack() {
         ⚙️ 设置
       </router-link>
     </nav>
+
+    <BgmPlayer />
 
     <div v-if="loading" class="loading">加载中...</div>
 

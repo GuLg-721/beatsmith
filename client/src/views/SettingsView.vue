@@ -8,6 +8,7 @@ import SoundSettings from '../components/settings/SoundSettings.vue'
 import CursorSettings from '../components/settings/CursorSettings.vue'
 import ThemePicker from '../components/settings/ThemePicker.vue'
 import ThemeBackground from '@/components/common/ThemeBackground.vue'
+import BgmPlayer from '@/components/common/BgmPlayer.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -66,6 +67,8 @@ function goBack() {
       <button class="back-btn" @click="goBack">← 返回</button>
       <span class="nav-title">⚙️ 设置</span>
     </nav>
+
+    <BgmPlayer />
 
     <!-- 个人信息卡片 -->
     <div class="settings-card">
