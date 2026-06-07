@@ -7,30 +7,93 @@ import api from '@/utils/api'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const playlist = ref<any[]>([])
+const playlists = ref<any[]>([])
+const currentPlaylistId = ref<number | null>(null)
+const playlistSongs = ref<any[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
 const searchResults = ref<any[]>([])
 const uploading = ref(false)
 const fileInput = ref<HTMLInputElement>()
+const newPlaylistName = ref('')
+const showNewPlaylist = ref(false)
+const importUrl = ref('')
+const importResults = ref<any[]>([])
 
 onMounted(() => {
   if (!authStore.isLoggedIn || authStore.user?.username !== 'admin') {
     router.push('/')
     return
   }
-  loadPlaylist()
+  loadPlaylists()
 })
 
-async function loadPlaylist() {
+async function loadPlaylists() {
   loading.value = true
   try {
-    const res = await api.get('/api/bgm/playlist')
-    playlist.value = res.data.songs
+    const res = await api.get('/api/bgm/playlists')
+    playlists.value = res.data.playlists
+    // 选择活跃歌单
+    const active = playlists.value.find((p: any) => p.isActive)
+    if (active) {
+      currentPlaylistId.value = active.id
+      loadPlaylistSongs(active.id)
+    }
   } catch (err) {
-    console.error('Failed to load playlist:', err)
+    console.error('Failed to load playlists:', err)
   } finally {
     loading.value = false
+  }
+}
+
+async function loadPlaylistSongs(playlistId: number) {
+  loading.value = true
+  try {
+    const res = await api.get(`/api/bgm/playlist?playlistId=${playlistId}`)
+    playlistSongs.value = res.data.songs
+  } catch (err) {
+    console.error('Failed to load playlist songs:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function createPlaylist() {
+  if (!newPlaylistName.value.trim()) return
+  try {
+    await api.post('/api/bgm/playlists', {
+      name: newPlaylistName.value,
+      description: ''
+    })
+    newPlaylistName.value = ''
+    showNewPlaylist.value = false
+    loadPlaylists()
+  } catch (err) {
+    console.error('Failed to create playlist:', err)
+  }
+}
+
+async function setActivePlaylist(playlistId: number) {
+  try {
+    await api.put(`/api/bgm/playlists/${playlistId}/active`)
+    currentPlaylistId.value = playlistId
+    loadPlaylistSongs(playlistId)
+  } catch (err) {
+    console.error('Failed to set active playlist:', err)
+  }
+}
+
+async function deletePlaylist(playlistId: number) {
+  if (!confirm('确定删除这个歌单吗？歌单中的所有歌曲都会被删除。')) return
+  try {
+    await api.delete(`/api/bgm/playlists/${playlistId}`)
+    if (currentPlaylistId.value === playlistId) {
+      currentPlaylistId.value = null
+      playlistSongs.value = []
+    }
+    loadPlaylists()
+  } catch (err) {
+    console.error('Failed to delete playlist:', err)
   }
 }
 
@@ -48,7 +111,9 @@ async function deleteSong(id: number) {
   if (!confirm('确定删除这首歌吗？')) return
   try {
     await api.delete(`/api/bgm/songs/${id}`)
-    loadPlaylist()
+    if (currentPlaylistId.value) {
+      loadPlaylistSongs(currentPlaylistId.value)
+    }
   } catch (err) {
     console.error('Failed to delete song:', err)
   }
@@ -60,33 +125,47 @@ function triggerUpload() {
 
 async function handleUpload(event: Event) {
   const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
+  const files = input.files
+  if (!files || files.length === 0) return
 
   uploading.value = true
   try {
-    // 第一步：上传文件
-    const formData = new FormData()
-    formData.append('bgm', file)
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const formData = new FormData()
+      formData.append('bgm', file)
 
-    const uploadRes = await api.post('/api/upload/bgm', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+      const uploadRes = await api.post('/api/upload/bgm', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
 
-    // 第二步：添加歌曲到数据库
-    await api.post('/api/bgm/songs', {
-      title: file.name.replace(/\.[^/.]+$/, ''),
-      artist: '未知艺术家',
-      filePath: uploadRes.data.filename,
-      duration: 0
-    })
+      await api.post('/api/bgm/songs', {
+        title: file.name.replace(/\.[^/.]+$/, ''),
+        artist: '未知艺术家',
+        filePath: uploadRes.data.filename,
+        duration: 0,
+        playlistId: currentPlaylistId.value
+      })
+    }
 
-    loadPlaylist()
+    if (currentPlaylistId.value) {
+      loadPlaylistSongs(currentPlaylistId.value)
+    }
   } catch (err) {
     alert(err instanceof Error ? err.message : '上传失败')
   } finally {
     uploading.value = false
     input.value = ''
+  }
+}
+
+async function importFromNetease() {
+  if (!importUrl.value.trim()) return
+  try {
+    const res = await api.post('/api/bgm/import', { playlistUrl: importUrl.value })
+    importResults.value = res.data.songs
+  } catch (err) {
+    console.error('Failed to import:', err)
   }
 }
 
@@ -101,23 +180,54 @@ function formatDuration(seconds: number): string {
   <div class="bgm-admin">
     <h1>🎵 背景音乐管理</h1>
 
-    <!-- 上传歌曲 -->
+    <!-- 歌单管理 -->
     <div class="section">
-      <h2>上传歌曲</h2>
+      <h2>歌单管理</h2>
+      <div class="playlist-list">
+        <div
+          v-for="pl in playlists"
+          :key="pl.id"
+          class="playlist-item"
+          :class="{ active: currentPlaylistId === pl.id }"
+        >
+          <div class="playlist-info">
+            <span class="playlist-name">{{ pl.name }}</span>
+            <span v-if="pl.isActive" class="active-badge">播放中</span>
+          </div>
+          <div class="playlist-actions">
+            <button v-if="!pl.isActive" @click="setActivePlaylist(pl.id)">设为播放</button>
+            <button v-if="!pl.isActive" class="delete-btn" @click="deletePlaylist(pl.id)">🗑️</button>
+          </div>
+        </div>
+      </div>
+      <div class="new-playlist">
+        <button v-if="!showNewPlaylist" @click="showNewPlaylist = true">+ 新建歌单</button>
+        <div v-else class="new-playlist-form">
+          <input v-model="newPlaylistName" placeholder="歌单名称" @keyup.enter="createPlaylist" />
+          <button @click="createPlaylist">创建</button>
+          <button @click="showNewPlaylist = false">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 上传歌曲 -->
+    <div class="section" v-if="currentPlaylistId">
+      <h2>上传歌曲到当前歌单</h2>
       <button class="upload-btn" @click="triggerUpload" :disabled="uploading">
-        {{ uploading ? '上传中...' : '📤 上传歌曲' }}
+        {{ uploading ? '上传中...' : '📤 上传歌曲（支持多选）' }}
       </button>
       <input
         ref="fileInput"
         type="file"
         accept=".mp3,.wav,.ogg"
+        multiple
         style="display: none"
         @change="handleUpload"
       />
     </div>
 
     <!-- 搜索歌曲 -->
-    <div class="section">
+    <div class="section" v-if="currentPlaylistId">
       <h2>搜索歌曲</h2>
       <div class="search-box">
         <input v-model="searchQuery" placeholder="输入歌曲名或艺术家..." @keyup.enter="searchSongs" />
@@ -131,12 +241,27 @@ function formatDuration(seconds: number): string {
       </div>
     </div>
 
-    <!-- 当前歌单 -->
-    <div class="section">
-      <h2>当前歌单 ({{ playlist.length }} 首)</h2>
+    <!-- 网易云导入 -->
+    <div class="section" v-if="currentPlaylistId">
+      <h2>导入网易云歌单</h2>
+      <div class="search-box">
+        <input v-model="importUrl" placeholder="粘贴网易云歌单链接..." />
+        <button @click="importFromNetease">解析</button>
+      </div>
+      <div v-if="importResults.length > 0" class="search-results">
+        <div v-for="song in importResults" :key="song.name" class="result-item">
+          <span>{{ song.name }}</span>
+          <span class="duration">{{ formatDuration(song.duration) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 当前歌单歌曲 -->
+    <div class="section" v-if="currentPlaylistId">
+      <h2>当前歌单歌曲 ({{ playlistSongs.length }} 首)</h2>
       <div v-if="loading" class="loading">加载中...</div>
-      <div v-else-if="playlist.length > 0" class="song-list">
-        <div v-for="song in playlist" :key="song.id" class="song-item">
+      <div v-else-if="playlistSongs.length > 0" class="song-list">
+        <div v-for="song in playlistSongs" :key="song.id" class="song-item">
           <div class="song-info">
             <span class="song-title">{{ song.title }}</span>
             <span class="song-artist">{{ song.artist || '未知艺术家' }}</span>
@@ -174,6 +299,115 @@ h2 {
   color: var(--text);
   font-size: 1.1rem;
   margin-bottom: 1rem;
+}
+
+.playlist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.playlist-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem;
+  background: var(--bg-surface);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.playlist-item:hover {
+  border-color: var(--primary);
+}
+
+.playlist-item.active {
+  border-color: var(--primary);
+  background: rgba(var(--primary-rgb), 0.1);
+}
+
+.playlist-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.playlist-name {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.active-badge {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  background: var(--primary);
+  color: #000;
+  border-radius: 4px;
+}
+
+.playlist-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.playlist-actions button {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.playlist-actions button:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.new-playlist {
+  margin-top: 1rem;
+}
+
+.new-playlist > button {
+  padding: 0.5rem 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 100%;
+}
+
+.new-playlist > button:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.new-playlist-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.new-playlist-form input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text);
+}
+
+.new-playlist-form button {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  background: var(--primary);
+  color: #000;
+  cursor: pointer;
 }
 
 .upload-btn {

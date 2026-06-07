@@ -89,10 +89,29 @@ export async function initDB(): Promise<Database> {
       artist TEXT,
       file_path TEXT NOT NULL,
       duration INTEGER,
+      playlist_id INTEGER DEFAULT 1,
       added_by INTEGER REFERENCES users(id),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `)
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS bgm_playlists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      is_active INTEGER DEFAULT 0,
+      created_by INTEGER REFERENCES users(id),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  // 创建默认歌单
+  try {
+    db.run("INSERT INTO bgm_playlists (name, description, is_active) VALUES ('默认歌单', '所有上传的歌曲', 1)")
+  } catch (e) {
+    // 已存在，忽略
+  }
 
   // 创建默认管理员账号
   createDefaultAdmin()
