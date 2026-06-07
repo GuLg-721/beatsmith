@@ -24,8 +24,32 @@ export const useBgmStore = defineStore('bgm', () => {
 
   // 用户交互后启用音频播放
   function enableAudio() {
+    // 创建音频元素（如果还没有）
+    if (!audio.value && currentSong.value) {
+      audio.value = new Audio(`/uploads/${currentSong.value.filePath}`)
+      audio.value.addEventListener('timeupdate', () => {
+        currentTime.value = audio.value?.currentTime || 0
+      })
+      audio.value.addEventListener('loadedmetadata', () => {
+        duration.value = audio.value?.duration || 0
+      })
+      audio.value.addEventListener('ended', () => {
+        next()
+      })
+      audio.value.addEventListener('error', (e) => {
+        console.error('Audio error:', e)
+        isPlaying.value = false
+      })
+    }
+
+    // 尝试播放
     if (audio.value) {
-      audio.value.play().catch(() => {})
+      audio.value.volume = volume.value
+      audio.value.play().then(() => {
+        isPlaying.value = true
+      }).catch(err => {
+        console.error('Enable audio failed:', err)
+      })
     }
   }
 

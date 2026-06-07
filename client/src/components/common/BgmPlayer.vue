@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
 import { useBgmStore } from '@/stores/bgmStore'
 
 const bgmStore = useBgmStore()
 
 // 用户交互后启用音频播放
 function handleUserInteraction() {
-  bgmStore.enableAudio()
+  if (!bgmStore.isPlaying && bgmStore.currentSong) {
+    bgmStore.enableAudio()
+  }
   document.removeEventListener('click', handleUserInteraction)
 }
 
@@ -17,6 +19,15 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('click', handleUserInteraction)
+})
+
+// 歌曲加载完成后自动准备播放
+watch(() => bgmStore.currentSong, (newSong) => {
+  if (newSong && !bgmStore.isPlaying) {
+    // 预加载音频
+    const audio = new Audio(`/uploads/${newSong.filePath}`)
+    audio.preload = 'auto'
+  }
 })
 
 function formatTime(seconds: number): string {
