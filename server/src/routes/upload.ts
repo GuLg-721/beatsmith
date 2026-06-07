@@ -258,4 +258,56 @@ router.post('/cursor', authMiddleware, (req: AuthRequest, res: Response) => {
   })
 })
 
+// BGM文件存储配置
+const bgmStorage = multer.diskStorage({
+  destination: path.join(__dirname, '..', '..', 'uploads', 'bgm'),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname)
+    cb(null, `bgm-${nanoid(8)}${ext}`)
+  }
+})
+
+const uploadBgm = multer({
+  storage: bgmStorage,
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['.mp3', '.wav', '.ogg']
+    const ext = path.extname(file.originalname).toLowerCase()
+    if (allowed.includes(ext)) {
+      cb(null, true)
+    } else {
+      cb(new Error('不支持的音频格式'))
+    }
+  }
+})
+
+// POST /api/upload/bgm
+router.post('/bgm', authMiddleware, (req: AuthRequest, res: Response) => {
+  uploadBgm.single('bgm')(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          res.status(400).json({ message: '文件大小超过 20MB 限制' })
+          return
+        }
+        res.status(400).json({ message: err.message })
+        return
+      }
+      res.status(400).json({ message: err.message })
+      return
+    }
+
+    if (!req.file) {
+      res.status(400).json({ message: '请选择音频文件' })
+      return
+    }
+
+    res.status(200).json({
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      size: req.file.size
+    })
+  })
+})
+
 export default router
