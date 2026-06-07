@@ -24,7 +24,11 @@ app.use(express.json())
 // 添加 Gzip 压缩
 app.use(compression())
 
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')))
+// 静态资源缓存
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
+  maxAge: '1d', // 缓存 1 天
+  etag: true
+}))
 
 // 路由
 app.get('/api/health', (_req, res) => {
