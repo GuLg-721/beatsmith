@@ -1,6 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import compression from 'compression'
+import rateLimit from 'express-rate-limit'
 import path from 'path'
 import { initDB } from './db'
 import authRoutes from './routes/auth'
@@ -14,15 +15,39 @@ import bgmRoutes from './routes/bgm'
 const app = express()
 const PORT = process.env.PORT || 3000
 
-// 中间件
+// 安全中间件
+// CORS 配置
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true
 }))
-app.use(express.json())
 
-// 添加 Gzip 压缩
-app.use(compression())
+// 通用速率限制
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 分钟
+  max: 100, // 每个 IP 最多 100 次请求
+  message: { message: '请求过于频繁，请稍后再试' }
+})
+app.use('/api/', limiter)
+
+// 认证接口更严格的速率限制
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 分钟
+  max: 10, // 每个 IP 最多 10 次请求
+  message: { message: '登录尝试过于频繁，请稍后再试' }
+})
+app.use('/api/auth/login', authLimiter)
+app.use('/api/auth/register', authLimiter)
+
+// 文件上传速率限制
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 小时
+  max: 20, // 每个 IP 最多 20 次上传
+  message: { message: '上传过于频繁，请稍后再试' }
+})
+app.use('/api/upload/', uploadLimiter)
+
+app.use(express.json({ limit: '10mb' }))
 
 // 静态资源缓存
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
