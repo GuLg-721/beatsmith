@@ -22,6 +22,13 @@ export const useBgmStore = defineStore('bgm', () => {
     }
   }
 
+  // 用户交互后启用音频播放
+  function enableAudio() {
+    if (audio.value) {
+      audio.value.play().catch(() => {})
+    }
+  }
+
   function play() {
     if (!currentSong.value) return
 
@@ -36,11 +43,20 @@ export const useBgmStore = defineStore('bgm', () => {
       audio.value.addEventListener('ended', () => {
         next()
       })
+      audio.value.addEventListener('error', (e) => {
+        console.error('Audio error:', e)
+        isPlaying.value = false
+      })
     }
 
     audio.value.volume = volume.value
-    audio.value.play()
-    isPlaying.value = true
+    audio.value.play().then(() => {
+      isPlaying.value = true
+    }).catch(err => {
+      console.error('Play failed:', err)
+      // 浏览器自动播放策略可能阻止播放
+      isPlaying.value = false
+    })
   }
 
   function pause() {
@@ -106,6 +122,7 @@ export const useBgmStore = defineStore('bgm', () => {
     next,
     prev,
     stop,
-    setVolume
+    setVolume,
+    enableAudio
   }
 })
