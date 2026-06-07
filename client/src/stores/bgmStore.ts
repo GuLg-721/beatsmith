@@ -6,7 +6,7 @@ export const useBgmStore = defineStore('bgm', () => {
   const playlist = ref<any[]>([])
   const currentIndex = ref(0)
   const isPlaying = ref(false)
-  const volume = ref(0.3)
+  const volume = ref(0.15)
   const audio = ref<HTMLAudioElement | null>(null)
   const currentTime = ref(0)
   const duration = ref(0)
