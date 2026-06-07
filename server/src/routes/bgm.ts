@@ -4,6 +4,37 @@ import { authMiddleware, AuthRequest } from '../middleware/auth'
 
 const router = Router()
 
+// POST /api/bgm/songs — 添加歌曲到歌单
+router.post('/songs', authMiddleware, (req: AuthRequest, res: Response) => {
+  try {
+    const db = getDB()
+    const { title, artist, filePath, duration } = req.body
+
+    if (!title || !filePath) {
+      res.status(400).json({ message: '标题和文件路径不能为空' })
+      return
+    }
+
+    // 检查是否是管理员
+    const userResult = db.exec('SELECT username FROM users WHERE id = ?', [req.user!.userId])
+    if (userResult.length === 0 || userResult[0].values[0][0] !== 'admin') {
+      res.status(403).json({ message: '需要管理员权限' })
+      return
+    }
+
+    db.run(
+      'INSERT INTO bgm_songs (title, artist, file_path, duration, added_by) VALUES (?, ?, ?, ?, ?)',
+      [title, artist || '未知艺术家', filePath, duration || 0, req.user!.userId]
+    )
+    scheduleSave()
+
+    res.status(200).json({ success: true })
+  } catch (err) {
+    console.error('Add song error:', err)
+    res.status(500).json({ message: '添加歌曲失败' })
+  }
+})
+
 // GET /api/bgm/playlist — 获取歌单
 router.get('/playlist', (req: Request, res: Response) => {
   try {

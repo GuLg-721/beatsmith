@@ -65,13 +65,20 @@ async function handleUpload(event: Event) {
 
   uploading.value = true
   try {
+    // 第一步：上传文件
     const formData = new FormData()
     formData.append('bgm', file)
-    formData.append('title', file.name.replace(/\.[^/.]+$/, ''))
-    formData.append('artist', '未知艺术家')
 
-    await api.post('/api/bgm/songs', formData, {
+    const uploadRes = await api.post('/api/upload/bgm', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
+    })
+
+    // 第二步：添加歌曲到数据库
+    await api.post('/api/bgm/songs', {
+      title: file.name.replace(/\.[^/.]+$/, ''),
+      artist: '未知艺术家',
+      filePath: uploadRes.data.filename,
+      duration: 0
     })
 
     loadPlaylist()
