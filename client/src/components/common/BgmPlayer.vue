@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, watch } from 'vue'
+import { NButton, NSlider } from 'naive-ui'
 import { useBgmStore } from '@/stores/bgmStore'
 
 const bgmStore = useBgmStore()
@@ -24,7 +25,6 @@ onUnmounted(() => {
 // 歌曲加载完成后自动准备播放
 watch(() => bgmStore.currentSong, (newSong) => {
   if (newSong && !bgmStore.isPlaying) {
-    // 预加载音频
     const audioUrl = newSong.filePath.startsWith('/uploads/')
       ? newSong.filePath
       : `/uploads/bgm/${newSong.filePath}`
@@ -39,45 +39,79 @@ function formatTime(seconds: number): string {
   return `${min}:${sec.toString().padStart(2, '0')}`
 }
 
-function handleVolumeChange(event: Event) {
-  const target = event.target as HTMLInputElement
-  bgmStore.setVolume(parseFloat(target.value))
+function handleVolumeChange(value: number) {
+  bgmStore.setVolume(value)
 }
 </script>
 
 <template>
   <div class="bgm-player" v-if="bgmStore.currentSong">
+    <!-- 歌曲信息 -->
     <div class="song-info">
-      <span class="song-icon">🎵</span>
+      <div class="song-icon-wrapper">
+        <span class="song-icon">🎵</span>
+      </div>
       <div class="song-details">
         <span class="song-title">{{ bgmStore.currentSong.title }}</span>
         <span class="song-artist" v-if="bgmStore.currentSong.artist">
-          - {{ bgmStore.currentSong.artist }}
+          {{ bgmStore.currentSong.artist }}
         </span>
       </div>
     </div>
 
+    <!-- 播放控制 -->
     <div class="controls">
-      <button class="control-btn" @click="bgmStore.prev">⏮</button>
-      <button class="control-btn play-btn" @click="bgmStore.togglePlay">
-        {{ bgmStore.isPlaying ? '⏸️' : '▶️' }}
-      </button>
-      <button class="control-btn" @click="bgmStore.next">⏭</button>
+      <NButton
+        size="small"
+        circle
+        secondary
+        @click="bgmStore.prev"
+        class="control-btn"
+      >
+        <template #icon>
+          <span>⏮</span>
+        </template>
+      </NButton>
+
+      <NButton
+        size="medium"
+        circle
+        type="primary"
+        @click="bgmStore.togglePlay"
+        class="play-btn"
+      >
+        <template #icon>
+          <span>{{ bgmStore.isPlaying ? '⏸️' : '▶️' }}</span>
+        </template>
+      </NButton>
+
+      <NButton
+        size="small"
+        circle
+        secondary
+        @click="bgmStore.next"
+        class="control-btn"
+      >
+        <template #icon>
+          <span>⏭</span>
+        </template>
+      </NButton>
     </div>
 
+    <!-- 音量控制 -->
     <div class="volume-control">
       <span class="volume-icon">🔊</span>
-      <input
-        type="range"
-        min="0"
-        max="1"
-        step="0.1"
+      <NSlider
         :value="bgmStore.volume"
-        @input="handleVolumeChange"
+        :max="1"
+        :step="0.1"
+        :tooltip="false"
         class="volume-slider"
+        @update:value="handleVolumeChange"
       />
     </div>
 
+    <!-- 进度条 -->
     <div class="progress-bar">
       <div class="progress" :style="{ width: `${bgmStore.progress * 100}%` }"></div>
     </div>
@@ -96,20 +130,31 @@ function handleVolumeChange(event: Event) {
   margin-bottom: 1rem;
   position: relative;
   overflow: hidden;
-  transition: border-color 0.3s, box-shadow 0.3s;
+  transition: all 0.3s ease;
 }
 
 .bgm-player:hover {
   border-color: var(--primary);
-  box-shadow: 0 0 15px rgba(var(--primary-rgb), 0.2);
+  box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.15);
 }
 
 .song-info {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.8rem;
   flex: 1;
   min-width: 0;
+}
+
+.song-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.2), rgba(var(--secondary-rgb, 0, 0, 255), 0.2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .song-icon {
@@ -118,10 +163,9 @@ function handleVolumeChange(event: Event) {
 
 .song-details {
   display: flex;
-  align-items: center;
-  gap: 0.3rem;
+  flex-direction: column;
+  gap: 0.2rem;
   min-width: 0;
-  overflow: hidden;
 }
 
 .song-title {
@@ -130,11 +174,12 @@ function handleVolumeChange(event: Event) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 0.95rem;
 }
 
 .song-artist {
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -146,61 +191,48 @@ function handleVolumeChange(event: Event) {
   gap: 0.5rem;
 }
 
-.control-btn {
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 50%;
-  background: var(--bg-surface);
-  color: var(--text);
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
+:deep(.control-btn) {
+  --n-border: 1px solid var(--border);
+  --n-border-hover: 1px solid var(--primary);
+  --n-border-pressed: 1px solid var(--primary);
+  --n-color: var(--bg-surface);
+  --n-color-hover: rgba(var(--primary-rgb), 0.1);
+  --n-color-pressed: rgba(var(--primary-rgb), 0.2);
+  --n-text-color: var(--text);
+  --n-text-color-hover: var(--primary);
 }
 
-.control-btn:hover {
-  background: var(--primary);
-  color: #000;
-  transform: scale(1.1);
-}
-
-.play-btn {
-  width: 42px;
-  height: 42px;
-  font-size: 1.1rem;
+:deep(.play-btn) {
+  --n-border: 2px solid var(--primary);
+  --n-border-hover: 2px solid var(--primary);
+  --n-border-pressed: 2px solid var(--primary);
+  --n-color: rgba(var(--primary-rgb), 0.15);
+  --n-color-hover: rgba(var(--primary-rgb), 0.25);
+  --n-color-pressed: rgba(var(--primary-rgb), 0.35);
+  --n-text-color: var(--primary);
+  --n-box-shadow-focus: 0 0 0 2px rgba(var(--primary-rgb), 0.3);
+  width: 44px;
+  height: 44px;
 }
 
 .volume-control {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-width: 120px;
 }
 
 .volume-icon {
   font-size: 1rem;
 }
 
-.volume-slider {
-  width: 80px;
-  height: 4px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: var(--bg-surface);
-  border-radius: 2px;
-  outline: none;
-}
-
-.volume-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--primary);
-  cursor: pointer;
+:deep(.volume-slider) {
+  --n-rail-color: var(--bg-surface);
+  --n-rail-color-hover: var(--bg-surface);
+  --n-handle-color: var(--primary);
+  --n-handle-size: 14px;
+  --n-rail-height: 4px;
+  --n-handle-box-shadow: 0 0 8px rgba(var(--primary-rgb), 0.4);
 }
 
 .progress-bar {
@@ -214,7 +246,8 @@ function handleVolumeChange(event: Event) {
 
 .progress {
   height: 100%;
-  background: var(--primary);
+  background: linear-gradient(90deg, var(--primary), var(--secondary, var(--primary)));
   transition: width 0.1s;
+  box-shadow: 0 0 6px rgba(var(--primary-rgb), 0.5);
 }
 </style>
