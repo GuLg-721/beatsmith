@@ -212,7 +212,7 @@ function goBack() {
           </div>
           <div class="grade-summary">
             <div
-              v-for="(count, grade) in userStats.grades"
+              v-for="(count, grade) in (userStats.grades as Record<string, number>)"
               :key="grade"
               class="grade-badge"
               :style="{ color: getGradeColor(grade.toUpperCase()), borderColor: getGradeColor(grade.toUpperCase()) }"
@@ -278,7 +278,7 @@ function goBack() {
         <template v-else-if="activeTab === 'grades' && userStats">
           <div class="grade-distribution">
             <div
-              v-for="(count, grade) in userStats.grades"
+              v-for="(count, grade) in (userStats.grades as Record<string, number>)"
               :key="grade"
               class="grade-item"
             >
