@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  beatsmith:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./server/data.db:/app/server/data.db
+      - ./server/uploads:/app/server/uploads
+    environment:
+      - PORT=3000
+      - JWT_SECRET=your-secret-key-here
+      - CLIENT_URL=https://your-domain.com
+      - DB_PATH=/app/server/data.db
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./client/dist:/usr/share/nginx/html
+    depends_on:
+      - beatsmith
+    restart: unless-stopped
