@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import compression from 'compression'
 import path from 'path'
 import { initDB } from './db'
 import authRoutes from './routes/auth'
@@ -19,6 +20,10 @@ app.use(cors({
   credentials: true
 }))
 app.use(express.json())
+
+// 添加 Gzip 压缩
+app.use(compression())
+
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')))
 
 // 路由
