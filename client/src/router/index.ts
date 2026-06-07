@@ -58,6 +58,12 @@ const router = createRouter({
       component: () => import('@/views/ShareView.vue')
     },
     {
+      path: '/admin/bgm',
+      name: 'BgmAdmin',
+      component: () => import('@/views/admin/BgmAdmin.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'NotFound',
       component: () => import('@/views/NotFoundView.vue')
