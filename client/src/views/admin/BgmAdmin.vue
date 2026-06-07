@@ -309,7 +309,7 @@ h2 {
 .active-badge {
   font-size: 0.7rem;
   padding: 0.15rem 0.4rem;
-  background: var(--success);
+  background: var(--primary);
   color: #000;
   border-radius: 4px;
   font-weight: 600;
