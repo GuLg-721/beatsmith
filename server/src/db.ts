@@ -106,11 +106,10 @@ export async function initDB(): Promise<Database> {
     )
   `)
 
-  // 创建默认歌单
-  try {
+  // 创建默认歌单（如果不存在）
+  const defaultPlaylist = db.exec("SELECT id FROM bgm_playlists WHERE name = '默认歌单'")
+  if (defaultPlaylist.length === 0 || defaultPlaylist[0].values.length === 0) {
     db.run("INSERT INTO bgm_playlists (name, description, is_active) VALUES ('默认歌单', '所有上传的歌曲', 1)")
-  } catch (e) {
-    // 已存在，忽略
   }
 
   // 创建默认管理员账号

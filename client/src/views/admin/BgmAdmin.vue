@@ -164,6 +164,22 @@ async function importFromNetease() {
   try {
     const res = await api.post('/api/bgm/import', { playlistUrl: importUrl.value })
     importResults.value = res.data.songs
+
+    // 将导入的歌曲添加到当前歌单
+    if (currentPlaylistId.value && importResults.value.length > 0) {
+      for (const song of importResults.value) {
+        await api.post('/api/bgm/songs', {
+          title: song.name,
+          artist: song.artist,
+          filePath: `netease-${song.id}.mp3`, // 模拟文件路径
+          duration: song.duration,
+          playlistId: currentPlaylistId.value
+        })
+      }
+      loadPlaylistSongs(currentPlaylistId.value)
+      importResults.value = []
+      alert(`成功导入 ${importResults.value.length} 首歌曲`)
+    }
   } catch (err) {
     console.error('Failed to import:', err)
   }
@@ -214,7 +230,7 @@ function formatDuration(seconds: number): string {
     <div class="section" v-if="currentPlaylistId">
       <h2>上传歌曲到当前歌单</h2>
       <button class="upload-btn" @click="triggerUpload" :disabled="uploading">
-        {{ uploading ? '上传中...' : '📤 上传歌曲（支持多选）' }}
+        {{ uploading ? '上传中...' : '📤 上传歌曲' }}
       </button>
       <input
         ref="fileInput"
