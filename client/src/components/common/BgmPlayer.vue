@@ -25,7 +25,10 @@ onUnmounted(() => {
 watch(() => bgmStore.currentSong, (newSong) => {
   if (newSong && !bgmStore.isPlaying) {
     // 预加载音频
-    const audio = new Audio(`/uploads/${newSong.filePath}`)
+    const audioUrl = newSong.filePath.startsWith('/uploads/')
+      ? newSong.filePath
+      : `/uploads/bgm/${newSong.filePath}`
+    const audio = new Audio(audioUrl)
     audio.preload = 'auto'
   }
 })

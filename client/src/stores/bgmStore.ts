@@ -22,11 +22,23 @@ export const useBgmStore = defineStore('bgm', () => {
     }
   }
 
+  // 获取音频文件完整路径
+  function getAudioUrl(filePath: string): string {
+    // 如果路径已经包含 /uploads/，直接返回
+    if (filePath.startsWith('/uploads/')) {
+      return filePath
+    }
+    // 否则拼接完整路径
+    return `/uploads/bgm/${filePath}`
+  }
+
   // 用户交互后启用音频播放
   function enableAudio() {
     // 创建音频元素（如果还没有）
     if (!audio.value && currentSong.value) {
-      audio.value = new Audio(`/uploads/${currentSong.value.filePath}`)
+      const audioUrl = getAudioUrl(currentSong.value.filePath)
+      console.log('Loading audio:', audioUrl)
+      audio.value = new Audio(audioUrl)
       audio.value.addEventListener('timeupdate', () => {
         currentTime.value = audio.value?.currentTime || 0
       })
@@ -57,7 +69,9 @@ export const useBgmStore = defineStore('bgm', () => {
     if (!currentSong.value) return
 
     if (!audio.value) {
-      audio.value = new Audio(`/uploads/${currentSong.value.filePath}`)
+      const audioUrl = getAudioUrl(currentSong.value.filePath)
+      console.log('Loading audio:', audioUrl)
+      audio.value = new Audio(audioUrl)
       audio.value.addEventListener('timeupdate', () => {
         currentTime.value = audio.value?.currentTime || 0
       })
