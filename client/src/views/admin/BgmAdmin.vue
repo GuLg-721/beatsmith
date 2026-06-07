@@ -11,14 +11,10 @@ const playlists = ref<any[]>([])
 const currentPlaylistId = ref<number | null>(null)
 const playlistSongs = ref<any[]>([])
 const loading = ref(false)
-const searchQuery = ref('')
-const searchResults = ref<any[]>([])
 const uploading = ref(false)
 const fileInput = ref<HTMLInputElement>()
 const newPlaylistName = ref('')
 const showNewPlaylist = ref(false)
-const importUrl = ref('')
-const importResults = ref<any[]>([])
 
 onMounted(() => {
   if (!authStore.isLoggedIn || authStore.user?.username !== 'admin') {
@@ -33,7 +29,6 @@ async function loadPlaylists() {
   try {
     const res = await api.get('/api/bgm/playlists')
     playlists.value = res.data.playlists
-    // 选择活跃歌单
     const active = playlists.value.find((p: any) => p.isActive)
     if (active) {
       currentPlaylistId.value = active.id
@@ -97,16 +92,6 @@ async function deletePlaylist(playlistId: number) {
   }
 }
 
-async function searchSongs() {
-  if (!searchQuery.value.trim()) return
-  try {
-    const res = await api.get(`/api/bgm/search?keyword=${searchQuery.value}`)
-    searchResults.value = res.data.results
-  } catch (err) {
-    console.error('Failed to search songs:', err)
-  }
-}
-
 async function deleteSong(id: number) {
   if (!confirm('确定删除这首歌吗？')) return
   try {
@@ -159,32 +144,6 @@ async function handleUpload(event: Event) {
   }
 }
 
-async function importFromNetease() {
-  if (!importUrl.value.trim()) return
-  try {
-    const res = await api.post('/api/bgm/import', { playlistUrl: importUrl.value })
-    importResults.value = res.data.songs
-
-    // 将导入的歌曲添加到当前歌单
-    if (currentPlaylistId.value && importResults.value.length > 0) {
-      for (const song of importResults.value) {
-        await api.post('/api/bgm/songs', {
-          title: song.name,
-          artist: song.artist,
-          filePath: `netease-${song.id}.mp3`, // 模拟文件路径
-          duration: song.duration,
-          playlistId: currentPlaylistId.value
-        })
-      }
-      loadPlaylistSongs(currentPlaylistId.value)
-      importResults.value = []
-      alert(`成功导入 ${importResults.value.length} 首歌曲`)
-    }
-  } catch (err) {
-    console.error('Failed to import:', err)
-  }
-}
-
 function formatDuration(seconds: number): string {
   const min = Math.floor(seconds / 60)
   const sec = Math.floor(seconds % 60)
@@ -228,7 +187,7 @@ function formatDuration(seconds: number): string {
 
     <!-- 上传歌曲 -->
     <div class="section" v-if="currentPlaylistId">
-      <h2>上传歌曲到当前歌单</h2>
+      <h2>上传歌曲</h2>
       <button class="upload-btn" @click="triggerUpload" :disabled="uploading">
         {{ uploading ? '上传中...' : '📤 上传歌曲' }}
       </button>
@@ -240,36 +199,6 @@ function formatDuration(seconds: number): string {
         style="display: none"
         @change="handleUpload"
       />
-    </div>
-
-    <!-- 搜索歌曲 -->
-    <div class="section" v-if="currentPlaylistId">
-      <h2>搜索歌曲</h2>
-      <div class="search-box">
-        <input v-model="searchQuery" placeholder="输入歌曲名或艺术家..." @keyup.enter="searchSongs" />
-        <button @click="searchSongs">搜索</button>
-      </div>
-      <div v-if="searchResults.length > 0" class="search-results">
-        <div v-for="song in searchResults" :key="song.id" class="result-item">
-          <span>{{ song.name }}</span>
-          <span class="duration">{{ formatDuration(song.duration) }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 网易云导入 -->
-    <div class="section" v-if="currentPlaylistId">
-      <h2>导入网易云歌单</h2>
-      <div class="search-box">
-        <input v-model="importUrl" placeholder="粘贴网易云歌单链接..." />
-        <button @click="importFromNetease">解析</button>
-      </div>
-      <div v-if="importResults.length > 0" class="search-results">
-        <div v-for="song in importResults" :key="song.name" class="result-item">
-          <span>{{ song.name }}</span>
-          <span class="duration">{{ formatDuration(song.duration) }}</span>
-        </div>
-      </div>
     </div>
 
     <!-- 当前歌单歌曲 -->
@@ -445,49 +374,6 @@ h2 {
   cursor: not-allowed;
 }
 
-.search-box {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.search-box input {
-  flex: 1;
-  padding: 0.6rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-surface);
-  color: var(--text);
-}
-
-.search-box button {
-  padding: 0.6rem 1.2rem;
-  border: 1px solid var(--primary);
-  border-radius: 8px;
-  background: var(--primary);
-  color: #000;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.search-results {
-  margin-top: 1rem;
-}
-
-.result-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 0.6rem;
-  background: var(--bg-surface);
-  border-radius: 6px;
-  margin-bottom: 0.5rem;
-}
-
-.duration {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-}
-
 .song-list {
   display: flex;
   flex-direction: column;
@@ -515,6 +401,11 @@ h2 {
 .song-artist {
   font-size: 0.85rem;
   color: var(--text-muted);
+}
+
+.duration {
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 .delete-btn {
