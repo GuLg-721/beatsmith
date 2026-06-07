@@ -92,6 +92,12 @@ function goBack() {
       </div>
     </div>
 
+    <!-- 主题配色卡片 -->
+    <div class="settings-card">
+      <h2 class="card-title">🎨 主题配色</h2>
+      <ThemePicker />
+    </div>
+
     <!-- 音效设置卡片 -->
     <div class="settings-card">
       <h2 class="card-title">🔊 音效设置</h2>
@@ -108,12 +114,6 @@ function goBack() {
     <div class="settings-card">
       <h2 class="card-title">🔒 修改密码</h2>
       <PasswordForm />
-    </div>
-
-    <!-- 主题配色卡片 -->
-    <div class="settings-card">
-      <h2 class="card-title">🎨 主题配色</h2>
-      <ThemePicker />
     </div>
   </div>
 </template>
