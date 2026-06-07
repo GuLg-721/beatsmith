@@ -291,8 +291,8 @@ h2 {
 }
 
 .playlist-item.active {
-  border-color: var(--success);
-  background: rgba(0, 255, 136, 0.05);
+  border-color: var(--primary);
+  background: rgba(var(--primary-rgb), 0.1);
 }
 
 .playlist-info {
