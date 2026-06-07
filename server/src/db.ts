@@ -82,6 +82,18 @@ export async function initDB(): Promise<Database> {
     )
   `)
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS bgm_songs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      artist TEXT,
+      file_path TEXT NOT NULL,
+      duration INTEGER,
+      added_by INTEGER REFERENCES users(id),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
   // 创建默认管理员账号
   createDefaultAdmin()
 
