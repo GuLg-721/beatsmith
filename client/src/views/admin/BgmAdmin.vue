@@ -119,6 +119,29 @@ function triggerUpload() {
   fileInput.value?.click()
 }
 
+// 解析文件名：格式为 "作者名 - 歌曲名.mp3"
+function parseFileName(fileName: string): { artist: string; title: string } {
+  // 移除扩展名
+  const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '')
+
+  // 尝试按 " - " 分割
+  const parts = nameWithoutExt.split(' - ')
+
+  if (parts.length >= 2) {
+    // 格式：作者名 - 歌曲名
+    return {
+      artist: parts[0].trim(),
+      title: parts.slice(1).join(' - ').trim()
+    }
+  }
+
+  // 如果没有 " - "，整个作为歌曲名
+  return {
+    artist: '未知艺术家',
+    title: nameWithoutExt.trim()
+  }
+}
+
 async function handleUpload(event: Event) {
   const input = event.target as HTMLInputElement
   const files = input.files
@@ -135,9 +158,12 @@ async function handleUpload(event: Event) {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
+      // 解析文件名获取作者和歌曲名
+      const { artist, title } = parseFileName(file.name)
+
       await api.post('/api/bgm/songs', {
-        title: file.name.replace(/\.[^/.]+$/, ''),
-        artist: '未知艺术家',
+        title: title,
+        artist: artist,
         filePath: uploadRes.data.filename,
         duration: 0,
         playlistId: currentPlaylistId.value
