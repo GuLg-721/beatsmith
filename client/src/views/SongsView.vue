@@ -19,12 +19,16 @@ const currentPage = ref(1)
 const totalPages = ref(1)
 const showUpload = ref(false)
 
+// 每页显示数量
+const SONGS_PER_PAGE = 15 // 3行 × 5列
+const HOT_SONGS_LIMIT = 10 // 热门歌曲最多10首
+
 async function fetchSongs() {
   loading.value = true
   try {
     const params: any = {
       page: currentPage.value,
-      limit: 20,
+      limit: SONGS_PER_PAGE,
       sort: sortBy.value
     }
     if (searchQuery.value.trim()) {
@@ -43,7 +47,7 @@ async function fetchSongs() {
 
 async function fetchHotSongs() {
   try {
-    const res = await api.get('/api/maps', { params: { sort: 'popular', limit: 6 } })
+    const res = await api.get('/api/maps', { params: { sort: 'popular', limit: HOT_SONGS_LIMIT } })
     hotSongs.value = res.data.maps
   } catch (err) {
     console.error('Failed to fetch hot songs:', err)
@@ -59,6 +63,13 @@ function handleSort(sort: string) {
   sortBy.value = sort
   currentPage.value = 1
   fetchSongs()
+}
+
+function handlePageChange(page: number) {
+  currentPage.value = page
+  fetchSongs()
+  // 滚动到歌曲列表顶部
+  window.scrollTo({ top: 300, behavior: 'smooth' })
 }
 
 function handleUploaded() {
@@ -117,7 +128,7 @@ watch(searchQuery, () => {
     <BgmPlayer />
 
     <main class="content">
-      <!-- 热门歌曲 -->
+      <!-- 热门歌曲（最多10首，2行） -->
       <section v-if="hotSongs.length > 0 && !searchQuery" class="section">
         <h2 class="section-title">🔥 热门歌曲</h2>
         <div class="song-grid">
@@ -129,7 +140,7 @@ watch(searchQuery, () => {
         </div>
       </section>
 
-      <!-- 全部歌曲 -->
+      <!-- 全部歌曲（3行 + 分页） -->
       <section class="section">
         <div class="section-header">
           <h2 class="section-title">📚 {{ searchQuery ? '搜索结果' : '全部歌曲' }}</h2>
@@ -162,6 +173,25 @@ watch(searchQuery, () => {
           </div>
           <NEmpty v-else-if="!loading" description="还没有歌曲，上传一首吧！" class="empty" />
         </NSpin>
+
+        <!-- 分页 -->
+        <div v-if="totalPages > 1" class="pagination">
+          <button
+            class="page-btn"
+            :disabled="currentPage === 1"
+            @click="handlePageChange(currentPage - 1)"
+          >
+            ← 上一页
+          </button>
+          <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
+          <button
+            class="page-btn"
+            :disabled="currentPage === totalPages"
+            @click="handlePageChange(currentPage + 1)"
+          >
+            下一页 →
+          </button>
+        </div>
       </section>
     </main>
 
@@ -188,15 +218,6 @@ watch(searchQuery, () => {
   border-bottom: 1px solid var(--border);
   margin-bottom: 2rem;
   margin-top: -1.875rem;
-}
-
-.top-bar {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 1.25rem 0;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 2rem;
 }
 
 .logo-link {
@@ -245,21 +266,6 @@ watch(searchQuery, () => {
   color: var(--text);
 }
 
-.search-box {
-  flex: 1;
-  max-width: 400px;
-}
-
-:deep(.n-input) {
-  --n-border: 1px solid var(--border) !important;
-  --n-border-hover: 1px solid var(--primary) !important;
-  --n-border-focus: 1px solid var(--primary) !important;
-  --n-color: var(--bg-surface) !important;
-  --n-text-color: var(--text) !important;
-  --n-placeholder-color: var(--text-muted) !important;
-  border-radius: 8px !important;
-}
-
 .content {
   max-width: 1200px;
   margin: 0 auto;
@@ -279,7 +285,7 @@ watch(searchQuery, () => {
 .section-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--ink);
+  color: var(--text);
   margin-bottom: 1rem;
 }
 
@@ -297,7 +303,7 @@ watch(searchQuery, () => {
   background: transparent;
   border: 1px solid var(--border);
   border-radius: 6px;
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 0.8125rem;
   font-family: inherit;
   cursor: pointer;
@@ -310,19 +316,73 @@ watch(searchQuery, () => {
 }
 
 .sort-btn.active {
-  background: var(--primary-dim);
+  background: rgba(var(--primary-rgb), 0.15);
   border-color: var(--primary);
   color: var(--primary);
 }
 
 .song-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(5, 1fr);
   gap: 1.25rem;
+}
+
+@media (max-width: 1200px) {
+  .song-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .song-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .song-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .empty {
   padding: 3rem 0;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.page-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-info {
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
 @media (max-width: 640px) {
