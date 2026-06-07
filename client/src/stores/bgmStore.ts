@@ -32,6 +32,20 @@ export const useBgmStore = defineStore('bgm', () => {
     return `/uploads/bgm/${filePath}`
   }
 
+  // 预加载下一首歌曲
+  function preloadNext() {
+    if (playlist.value.length === 0) return
+    const nextIndex = (currentIndex.value + 1) % playlist.value.length
+    const nextSong = playlist.value[nextIndex]
+    if (nextSong) {
+      const audioUrl = nextSong.filePath.startsWith('/uploads/')
+        ? nextSong.filePath
+        : `/uploads/bgm/${nextSong.filePath}`
+      const audio = new Audio(audioUrl)
+      audio.preload = 'auto'
+    }
+  }
+
   // 用户交互后启用音频播放
   function enableAudio() {
     // 创建音频元素（如果还没有）
@@ -90,6 +104,7 @@ export const useBgmStore = defineStore('bgm', () => {
     audio.value.volume = volume.value
     audio.value.play().then(() => {
       isPlaying.value = true
+      preloadNext()
     }).catch(err => {
       console.error('Play failed:', err)
       // 浏览器自动播放策略可能阻止播放
@@ -154,6 +169,7 @@ export const useBgmStore = defineStore('bgm', () => {
     currentSong,
     progress,
     loadPlaylist,
+    preloadNext,
     play,
     pause,
     togglePlay,
