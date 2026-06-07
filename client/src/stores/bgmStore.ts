@@ -139,12 +139,19 @@ export const useBgmStore = defineStore('bgm', () => {
     play()
   }
 
-  function stop() {
-    audio.value?.pause()
-    audio.value = null
+  function cleanup() {
+    if (audio.value) {
+      audio.value.pause()
+      audio.value.src = ''
+      audio.value = null
+    }
     isPlaying.value = false
     currentTime.value = 0
     duration.value = 0
+  }
+
+  function stop() {
+    cleanup()
   }
 
   function setVolume(value: number) {
@@ -176,6 +183,7 @@ export const useBgmStore = defineStore('bgm', () => {
     next,
     prev,
     stop,
+    cleanup,
     setVolume,
     enableAudio
   }
