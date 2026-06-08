@@ -7,6 +7,7 @@ const props = defineProps<{
 const medals = ['🥇', '🥈', '🥉']
 
 function formatScore(score: number): string {
+  if (score === undefined || score === null) return "0";
   return score.toLocaleString()
 }
 </script>

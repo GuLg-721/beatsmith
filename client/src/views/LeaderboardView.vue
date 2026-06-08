@@ -117,14 +117,14 @@ onMounted(() => {
       <template v-else>
         <!-- 前三名领奖台 -->
         <TopThree
-          v-if="rankings.length >= 3"
+          v-if="rankings.length > 0"
           :rankings="rankings"
           :type="activeTab === 'song' ? 'total' : activeTab"
         />
 
         <!-- 排行列表 -->
         <RankList
-          :rankings="activeTab === 'song' ? rankings : rankings.slice(3)"
+          :rankings="activeTab === 'song' ? rankings : rankings.slice(0, 50)"
           :type="activeTab === 'song' ? 'total' : activeTab"
         />
       </template>

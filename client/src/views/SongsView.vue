@@ -72,6 +72,10 @@ function handlePageChange(page: number) {
   window.scrollTo({ top: 300, behavior: 'smooth' })
 }
 
+function handleLogout() {
+  authStore.logout()
+  router.push("/")
+}
 function handleUploaded() {
   fetchSongs()
   fetchHotSongs()
@@ -117,6 +121,7 @@ watch(searchQuery, () => {
         + 上传歌曲
       </NButton>
       <router-link v-if="authStore.isLoggedIn" :to="`/profile/${authStore.user?.id}`" class="profile-link">
+      <button v-if="authStore.isLoggedIn" class="logout-btn" @click="handleLogout">退出</button>
         <span class="profile-icon">👤</span>
         <span class="profile-text">个人档案</span>
       </router-link>
@@ -401,3 +406,20 @@ watch(searchQuery, () => {
   }
 }
 </style>
+<style scoped>
+  .logout-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+  }
+
+  .logout-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+  </style>

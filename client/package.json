@@ -19,6 +19,7 @@
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
+    "@types/jsmediatags": "^3.9.6",
     "@types/node": "^24.12.3",
     "@typescript-eslint/eslint-plugin": "^8.60.1",
     "@typescript-eslint/parser": "^8.60.1",

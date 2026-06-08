@@ -44,7 +44,13 @@ onMounted(async () => {
 })
 
 function startGame() {
-  bgmStore.pause() // 暂停背景音乐
+    // 监听音频结束，触发游戏结束
+    watch(() => audioStore.isPlaying, (playing) => {
+      if (!playing && gameStore.state === 'playing') {
+        gameStore.endGame()
+      }
+    })
+    bgmStore.pause() // 暂停背景音乐
   gameStore.startGame()
   audioStore.play()
 }

@@ -18,8 +18,7 @@ const fileInput = ref<HTMLInputElement>()
 const newPlaylistName = ref('')
 const showNewPlaylist = ref(false)
 
-onMounted(async () => {
-  await authStore.fetchUser();
+onMounted(() => {
   if (!authStore.isLoggedIn || authStore.user?.username !== 'admin') {
     router.push('/')
     return

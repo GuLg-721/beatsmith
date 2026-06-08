@@ -17,10 +17,10 @@ const result = gameStore.getResult()
 const scoreSubmitted = ref(false)
 
 async function submitScore() {
-  if (!authStore.isLoggedIn || !gameStore.currentMapId || scoreSubmitted.value) return
+  if (!authStore.isLoggedIn || !mapId || scoreSubmitted.value) return
 
   try {
-    await api.post(`/api/maps/${gameStore.currentMapId}/scores`, {
+    await api.post(`/api/maps/${mapId}/scores`, {
       score: result.score,
       maxCombo: result.maxCombo,
       accuracy: result.accuracy,
@@ -47,10 +47,11 @@ function retry() {
   router.go(0) // 刷新页面重新开始
 }
 
+  const mapId = gameStore.currentMapId
 function goBack() {
   bgmStore.pause() // 确保背景音乐暂停
   gameStore.reset()
-  router.push(`/map/${gameStore.currentMapId}`)
+  router.push(`/map/${mapId}`)
 }
 </script>
 
