@@ -3,6 +3,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useGameStore } from '@/stores/gameStore'
 import { useAudioStore } from '@/stores/audioStore'
+import { useBgmStore } from '@/stores/bgmStore'
 import { getGradeColor } from '@/utils/grade'
 import GameCanvas from '@/components/player/GameCanvas.vue'
 import ResultScreen from '@/components/player/ResultScreen.vue'
@@ -14,6 +15,7 @@ const route = useRoute()
 const router = useRouter()
 const gameStore = useGameStore()
 const audioStore = useAudioStore()
+const bgmStore = useBgmStore()
 
 const loading = ref(true)
 const mapData = ref<any>(null)
@@ -42,6 +44,7 @@ onMounted(async () => {
 })
 
 function startGame() {
+  bgmStore.pause() // 暂停背景音乐
   gameStore.startGame()
   audioStore.play()
 }
@@ -61,6 +64,7 @@ function resumeGame() {
     if (countdown.value <= 0) {
       clearInterval(countdownTimer!)
       countdownTimer = null
+      bgmStore.pause() // 确保背景音乐暂停
       gameStore.resumeGame()
       audioStore.play()
     }

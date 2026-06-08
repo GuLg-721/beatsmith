@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import { useGameStore } from '@/stores/gameStore'
 import { useAuthStore } from '@/stores/authStore'
+import { useBgmStore } from '@/stores/bgmStore'
 import { getGradeColor } from '@/utils/grade'
 import { NButton } from 'naive-ui'
 import { useRouter } from 'vue-router'
@@ -8,12 +10,14 @@ import api from '@/utils/api'
 
 const gameStore = useGameStore()
 const authStore = useAuthStore()
+const bgmStore = useBgmStore()
 const router = useRouter()
 
 const result = gameStore.getResult()
+const scoreSubmitted = ref(false)
 
 async function submitScore() {
-  if (!authStore.isLoggedIn || !gameStore.currentMapId) return
+  if (!authStore.isLoggedIn || !gameStore.currentMapId || scoreSubmitted.value) return
 
   try {
     await api.post(`/api/maps/${gameStore.currentMapId}/scores`, {
@@ -26,17 +30,25 @@ async function submitScore() {
       good: result.good,
       miss: result.miss
     })
+    scoreSubmitted.value = true
   } catch (err) {
     console.error('Failed to submit score:', err)
   }
 }
 
+// 自动上传分数
+onMounted(() => {
+  submitScore()
+})
+
 function retry() {
+  bgmStore.pause() // 确保背景音乐暂停
   gameStore.reset()
   router.go(0) // 刷新页面重新开始
 }
 
 function goBack() {
+  bgmStore.pause() // 确保背景音乐暂停
   gameStore.reset()
   router.push(`/map/${gameStore.currentMapId}`)
 }
