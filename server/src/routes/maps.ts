@@ -203,6 +203,21 @@ router.post('/', authMiddleware, (req: AuthRequest, res: Response) => {
     const db = getDB()
     const id = nanoid(12)
 
+    // 如果没有提供 BPM，使用默认值
+    const finalBpm = bpm || 120
+
+    // 如果没有提供难度，根据 BPM 自动设置
+    let finalDifficulty = difficulty
+    if (!finalDifficulty) {
+      if (finalBpm < 100) {
+        finalDifficulty = 'Easy'
+      } else if (finalBpm < 140) {
+        finalDifficulty = 'Normal'
+      } else {
+        finalDifficulty = 'Hard'
+      }
+    }
+
     db.run(
       `INSERT INTO beatmaps (id, creator_id, title, artist, audio_file, cover_image, duration, bpm, map_data, difficulty)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -214,9 +229,9 @@ router.post('/', authMiddleware, (req: AuthRequest, res: Response) => {
         audioFile,
         coverImage || null,
         duration || null,
-        bpm || null,
+        finalBpm,
         mapData || '{"notes":[],"timingPoints":[]}',
-        difficulty || 'Normal'
+        finalDifficulty
       ]
     )
     scheduleSave()
@@ -227,8 +242,9 @@ router.post('/', authMiddleware, (req: AuthRequest, res: Response) => {
       artist,
       audioFile,
       coverImage,
-      bpm,
-      difficulty,
+      bpm: finalBpm,
+      difficulty: finalDifficulty,
+      duration,
       message: '谱面创建成功'
     })
   } catch (err) {

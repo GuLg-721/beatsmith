@@ -76,23 +76,38 @@ function parseFileName(fileName: string): { artist: string; title: string } {
   }
 }
 
-async function handleAudioChange(e: Event) {
+async // 读取音频时长
+async function readAudioDuration(file: File): Promise<number> {
+  return new Promise((resolve) => {
+    const audio = new Audio()
+    audio.addEventListener('loadedmetadata', () => {
+      resolve(Math.round(audio.duration))
+    })
+    audio.addEventListener('error', () => {
+      resolve(0)
+    })
+    audio.src = URL.createObjectURL(file)
+  })
+}
+
+function handleAudioChange(e: Event) {
   const input = e.target as HTMLInputElement
   if (input.files && input.files[0]) {
     const file = input.files[0]
     audioFile.value = file
 
     // 自动识别歌曲信息
-    const metadata = await readMp3Metadata(file)
-    if (metadata) {
-      form.value.title = metadata.title
-      form.value.artist = metadata.artist
-    } else {
-      // 如果元数据读取失败，解析文件名
-      const fileInfo = parseFileName(file.name)
-      form.value.title = fileInfo.title
-      form.value.artist = fileInfo.artist
-    }
+    readMp3Metadata(file).then(metadata => {
+      if (metadata) {
+        form.value.title = metadata.title
+        form.value.artist = metadata.artist
+      } else {
+        // 如果元数据读取失败，解析文件名
+        const fileInfo = parseFileName(file.name)
+        form.value.title = fileInfo.title
+        form.value.artist = fileInfo.artist
+      }
+    })
   }
 }
 
@@ -128,6 +143,9 @@ async function handleUpload() {
   loading.value = true
 
   try {
+    // 读取音频时长
+    const duration = await readAudioDuration(audioFile.value)
+
     // 上传音频
     const audioFormData = new FormData()
     audioFormData.append('audio', audioFile.value)
@@ -152,7 +170,8 @@ async function handleUpload() {
       artist: form.value.artist.trim() || null,
       audioFile: audioRes.data.filename,
       coverImage: coverFilename,
-      bpm: null,
+      bpm: null, // 将在后端自动检测
+      duration: duration || null,
       mapData: '{"notes":[],"timingPoints":[]}'
     })
 
