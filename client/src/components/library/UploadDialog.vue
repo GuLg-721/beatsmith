@@ -76,7 +76,7 @@ function parseFileName(fileName: string): { artist: string; title: string } {
   }
 }
 
-async // 读取音频时长
+// 读取音频时长
 async function readAudioDuration(file: File): Promise<number> {
   return new Promise((resolve) => {
     const audio = new Audio()

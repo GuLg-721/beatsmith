@@ -10,8 +10,9 @@ import { defineConfig } from 'vite'
       }
     },
     build: {
+      minify: false,
       rollupOptions: {
-        external: ['react-native-fs'],
+        external: ['react-native-fs']
       }
     },
     server: {
