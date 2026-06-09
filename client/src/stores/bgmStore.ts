@@ -7,6 +7,7 @@ export const useBgmStore = defineStore('bgm', () => {
   const currentIndex = ref(0)
   const isPlaying = ref(false)
   const volume = ref(0.15)
+  const shuffle = ref(localStorage.getItem('bgm-shuffle') === 'true')
   const audio = ref<HTMLAudioElement | null>(null)
   const currentTime = ref(0)
   const duration = ref(0)
@@ -127,7 +128,16 @@ export const useBgmStore = defineStore('bgm', () => {
 
   function next() {
     if (playlist.value.length === 0) return
-    currentIndex.value = (currentIndex.value + 1) % playlist.value.length
+    if (shuffle.value) {
+      // 随机选一首（排除当前歌曲）
+      let randomIndex: number
+      do {
+        randomIndex = Math.floor(Math.random() * playlist.value.length)
+      } while (randomIndex === currentIndex.value && playlist.value.length > 1)
+      currentIndex.value = randomIndex
+    } else {
+      currentIndex.value = (currentIndex.value + 1) % playlist.value.length
+    }
     stop()
     play()
   }
@@ -160,6 +170,10 @@ export const useBgmStore = defineStore('bgm', () => {
       audio.value.volume = value
     }
   }
+  function toggleShuffle() {
+    shuffle.value = !shuffle.value
+    localStorage.setItem('bgm-shuffle', String(shuffle.value))
+  }
 
   const progress = computed(() => {
     if (duration.value === 0) return 0
@@ -170,6 +184,7 @@ export const useBgmStore = defineStore('bgm', () => {
     playlist,
     currentIndex,
     isPlaying,
+    shuffle,
     volume,
     currentTime,
     duration,
@@ -185,6 +200,7 @@ export const useBgmStore = defineStore('bgm', () => {
     stop,
     cleanup,
     setVolume,
-    enableAudio
+    enableAudio,
+    toggleShuffle
   }
 })

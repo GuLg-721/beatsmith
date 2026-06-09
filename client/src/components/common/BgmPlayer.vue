@@ -59,6 +59,14 @@ function handleVolumeChange(event: Event) {
 
     <!-- 播放控制 -->
     <div class="controls">
+       <button
+      class="control-btn shuffle-btn"
+      :class="{ active: bgmStore.shuffle }"
+      @click="bgmStore.toggleShuffle"
+      :title="bgmStore.shuffle ? '关闭随机播放' : '开启随机播放'"
+    >
+      <span>&#128256;</span>
+    </button>
       <button class="control-btn prev-btn" @click="bgmStore.prev">
         <span>⏮</span>
       </button>
