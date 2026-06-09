@@ -49,7 +49,7 @@ router.get('/', (req: Request, res: Response) => {
 
     // 查询列表
     const result = db.exec(
-      `SELECT m.id, m.title, m.artist, m.audio_file, m.cover_image, m.duration, m.bpm, m.difficulty, m.play_count, m.created_at,
+      `SELECT m.id, m.title, m.artist, m.audio_file, m.cover_image, m.duration, m.bpm, m.difficulty, m.play_count, m.created_at, m.creator_id,
               u.username as creator_name
        FROM beatmaps m
        LEFT JOIN users u ON m.creator_id = u.id
@@ -70,7 +70,8 @@ router.get('/', (req: Request, res: Response) => {
       difficulty: row[7],
       playCount: row[8],
       createdAt: row[9],
-      creatorName: row[10]
+      creatorId: row[10],
+      creatorName: row[11]
     })) : []
 
     res.status(200).json({

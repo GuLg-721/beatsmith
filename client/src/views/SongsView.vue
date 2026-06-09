@@ -7,7 +7,8 @@ import { NInput, NButton, NEmpty, NSpin } from 'naive-ui'
 import api from '@/utils/api'
 import ThemeBackground from '@/components/common/ThemeBackground.vue'
 import BgmPlayer from '@/components/common/BgmPlayer.vue'
-
+import { useRouter } from 'vue-router'
+const router = useRouter()
 const authStore = useAuthStore()
 
 const songs = ref<any[]>([])
@@ -80,7 +81,10 @@ function handleUploaded() {
   fetchSongs()
   fetchHotSongs()
 }
-
+function handleSongDeleted(deletedId: string) {
+    songs.value = songs.value.filter(s => s.id !== deletedId)
+    hotSongs.value = hotSongs.value.filter(s => s.id !== deletedId)
+  }
 onMounted(() => {
   fetchSongs()
   fetchHotSongs()
@@ -141,6 +145,8 @@ watch(searchQuery, () => {
             v-for="song in hotSongs"
             :key="song.id"
             v-bind="song"
+	    
+            @deleted="handleSongDeleted"
           />
         </div>
       </section>
@@ -174,6 +180,8 @@ watch(searchQuery, () => {
               v-for="song in songs"
               :key="song.id"
               v-bind="song"
+              
+              @deleted="handleSongDeleted"
             />
           </div>
           <NEmpty v-else-if="!loading" description="还没有歌曲，上传一首吧！" class="empty" />
